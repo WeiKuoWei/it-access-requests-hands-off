@@ -1,0 +1,131 @@
+the hedged environment one (IT-236) is the dangerous one. extend the backstop to environment and permission so it goes to clarify, with tests, then commit.
+
+---
+
+<task-notification>
+<task-id>bfaeltxe4</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/bfaeltxe4.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_supplied.json 2 materials/requests tests/fixtures/IT-101.json 2&gt;&amp;1 | grep -v " INFO \| WARNING " | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b1hb54xgm</task-id>
+<tool-use-id>toolu_017xB3dGxJEuRZ1EsSHY15ck</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/b1hb54xgm.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_h1.json 3 tests/fixtures/policy_holdout 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bdy38yfz9</task-id>
+<tool-use-id>toolu_01FeazgWEE3guCMjggQzDfri</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/bdy38yfz9.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_dev.json 3 tests/fixtures/policy_dev 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b3os9j53p</task-id>
+<tool-use-id>toolu_0161hbFqNqBzvKb8qKjDhKhh</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/b3os9j53p.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_dev2.json 3 tests/fixtures/policy_dev2 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bwg2yk65r</task-id>
+<tool-use-id>toolu_012T2Vt53Xr3ohWMnx9Aeu6m</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/bwg2yk65r.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_probe.json 3 tests/fixtures/policy_probe 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b6dh97p5y</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/b6dh97p5y.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_h2.json 3 tests/fixtures/policy_holdout2 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bvgdffoy0</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/bvgdffoy0.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_supplied.json 3 materials/requests tests/fixtures/IT-101.json 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b1ai3222p</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/b1ai3222p.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_h1.json 3 tests/fixtures/policy_holdout 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bllicav6m</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/bllicav6m.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_dev.json 3 tests/fixtures/policy_dev 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bekhe12es</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/bekhe12es.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_dev2.json 3 tests/fixtures/policy_dev2 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>be9ayls7q</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/be9ayls7q.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_probe.json 3 tests/fixtures/policy_probe 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>buk3zj9zb</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/buk3zj9zb.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_h2.json 3 tests/fixtures/policy_holdout2 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b53ug3u7f</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-workspace-repo/f2a5366c-2e30-4f09-af4d-ce44aeb108f8/tasks/b53ug3u7f.output</output-file>
+<status>completed</status>
+<summary>Background command ".venv/bin/python /tmp/probe/capture_raw.py /tmp/probe/raw_supplied.json 3 materials/requests tests/fixtures/IT-101.json 2&gt;&amp;1 | tail -1" completed (exit code 0)</summary>
+</task-notification>

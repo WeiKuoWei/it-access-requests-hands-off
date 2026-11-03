@@ -1,0 +1,90 @@
+{
+  "cli_version": "0.10.0",
+  "checkpoint_id": "01M6HH721J8T1Y7X0K598HY30A",
+  "session_id": "f2a5366c-2e30-4f09-af4d-ce44aeb108f8",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-03T20:22:12.386075Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "intake/finalize.py",
+    "intake/routing.py",
+    "intake/extract.py",
+    "tests/test_policy_cases.py",
+    "README.md",
+    "deliverables/accuracy.md",
+    "deliverables/verification.md"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-5-5",
+  "turn_id": "1a55526a44df",
+  "checkpoint_transcript_start": 2475,
+  "transcript_lines_at_start": 2475,
+  "compact_transcript_start": 476,
+  "token_usage": {
+    "input_tokens": 110,
+    "cache_creation_tokens": 107774,
+    "cache_read_tokens": 28670430,
+    "output_tokens": 79288,
+    "api_call_count": 55
+  },
+  "session_metrics": {
+    "turn_count": 11
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-03T20:22:12.162475Z",
+    "agent_lines": 24,
+    "agent_removed": 10,
+    "human_added": 97,
+    "human_modified": 24,
+    "human_removed": 0,
+    "total_committed": 145,
+    "total_lines_changed": 256,
+    "agent_percentage": 13.28125,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 754,
+      "user_lines_removed": 24,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "README.md": 1,
+        "intake/extract.py": 4,
+        "intake/finalize.py": 78,
+        "intake/routing.py": 1,
+        "tests/fixtures/policy_dev2/IT-281.json": 4,
+        "tests/fixtures/policy_dev2/IT-282.json": 4,
+        "tests/fixtures/policy_dev2/IT-283.json": 4,
+        "tests/fixtures/policy_dev2/IT-284.json": 4,
+        "tests/fixtures/policy_dev2/IT-285.json": 4,
+        "tests/fixtures/policy_dev2/IT-286.json": 4,
+        "tests/fixtures/policy_dev2/IT-287.json": 4,
+        "tests/fixtures/policy_dev2/IT-288.json": 4,
+        "tests/fixtures/policy_dev2/IT-289.json": 4,
+        "tests/fixtures/policy_dev2/IT-290.json": 4,
+        "tests/fixtures/policy_holdout3/IT-261.json": 4,
+        "tests/fixtures/policy_holdout3/IT-262.json": 4,
+        "tests/fixtures/policy_holdout3/IT-263.json": 4,
+        "tests/fixtures/policy_holdout3/IT-264.json": 4,
+        "tests/fixtures/policy_holdout3/IT-265.json": 4,
+        "tests/fixtures/policy_holdout3/IT-266.json": 4,
+        "tests/fixtures/policy_holdout3/IT-267.json": 4,
+        "tests/fixtures/policy_holdout3/IT-268.json": 4,
+        "tests/fixtures/policy_holdout3/IT-269.json": 4,
+        "tests/fixtures/policy_holdout3/IT-270.json": 4,
+        "tests/policy_dev2_expected.json": 202,
+        "tests/policy_holdout3_expected.json": 202,
+        "tests/test_policy_cases.py": 186
+      },
+      "user_removed_per_file": {
+        "README.md": 1,
+        "intake/finalize.py": 17,
+        "intake/routing.py": 1,
+        "tests/test_policy_cases.py": 5
+      }
+    }
+  ]
+}
