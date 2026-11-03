@@ -399,8 +399,117 @@ class TestUnexplainedNulls:
         assert e["issues"] == []
 
 
+# ================================================================================ hedged alternative dates
+FIX = Path(__file__).parent / "fixtures"
+GOLD = {name: json.loads((Path(__file__).parent / f"{name}_expected.json").read_text())
+        for name in ("policy_probe", "policy_holdout", "policy_dev")}
+
+
+def fixture_message(set_name, doc):
+    return json.loads((FIX / set_name / doc).read_text())["message"]
+
+
+def gold_extraction(set_name, doc):
+    return record(**{**GOLD[set_name][doc]["fields"], "business_purpose": "x"})
+
+
+def hedged(e):
+    return [i for i in e["issues"] if i.startswith("hedged-alternative")]
+
+
+class TestHedgedDates:
+    """A tentative alternative date next to a stated one is a contradiction (policy: unresolved, not a guess).
+
+    The prompt tells the model to null the date; these checks are the backstop for a model that keeps the stated one.
+    Messages come from the dev set (tests/fixtures/policy_dev), which the prompt was tuned on - not the sealed set."""
+
+    @pytest.mark.parametrize("doc,kept", [
+        ("IT-251.json", dict(start_date="2026-12-01", end_date="2026-12-03")),   # "Tentatively until X instead"
+        ("IT-252.json", dict(start_date="2026-12-02", end_date="2026-12-04")),   # "Perhaps starting X though"
+        ("IT-253.json", dict(start_date="2026-12-01", end_date="2026-12-03")),   # whole window: "could be X to Y rather than"
+        ("IT-254.json", dict(start_date="2026-12-01", end_date="2026-12-04")),   # "(or possibly X)"
+        ("IT-255.json", dict(start_date="2026-12-03", end_date="2026-12-05")),   # "Not sure if the end should really be X"
+    ])
+    def test_a_model_that_keeps_the_stated_dates_is_flagged_and_sent_to_clarify(self, tmp_path, store, cfg, doc, kept):
+        name = doc
+        c = process(tmp_path, store, cfg, name, fixture_message("policy_dev", doc),
+                    **{**GOLD["policy_dev"][doc]["fields"], **kept})
+        e = c["extraction"]
+        assert (e["start_date"], e["end_date"]) == (kept["start_date"], kept["end_date"])  # never rewritten
+        assert len(hedged(e)) == 1
+        assert routed(c) == (DESK, "needs-information", "clarify")
+        assert "a hedged alternative date is floated in the message but not resolved" in c["reasons"]
+
+    def test_the_issue_names_the_floated_date_and_quotes_the_sentence(self):
+        e = finalize(gold_extraction("policy_dev", "IT-251.json") | {"end_date": "2026-12-03"},
+                     fixture_message("policy_dev", "IT-251.json"), "IT-251.json")
+        assert "2026-12-08" in hedged(e)[0] and "Tentatively until 2026-12-08 instead" in hedged(e)[0]
+
+    def test_a_model_that_resolved_it_is_not_flagged_again(self):
+        e = record(**{**GOLD["policy_dev"]["IT-251.json"]["fields"],
+                      "issues": ["conflict: end_date 2026-12-03 vs 2026-12-08"]})  # end_date already null
+        finalize(e, fixture_message("policy_dev", "IT-251.json"), "IT-251.json")
+        assert hedged(e) == []
+
+    @pytest.mark.parametrize("doc", ["IT-257.json", "IT-258.json", "IT-259.json"])
+    def test_controls_a_hedge_with_no_alternative_date_or_an_unrelated_date_is_left_alone(self, doc):
+        e = finalize(gold_extraction("policy_dev", doc), fixture_message("policy_dev", doc), doc)
+        assert hedged(e) == [] and not any(i.startswith("correction-ignored") for i in e["issues"])
+
+    def test_a_hedge_that_only_restates_the_used_dates_is_not_an_alternative(self):
+        msg = "IT-001, 2026-10-22. Access 2026-10-23 to 2026-11-06. I might need 2026-10-23 to 2026-11-06 exactly."
+        assert hedged(finalize(record(), msg, "IT-001.json")) == []
+
+    def test_the_request_date_in_a_hedged_sentence_is_not_an_alternative(self):
+        msg = "Submitted 2026-10-22, maybe a day late. Access 2026-10-23 to 2026-11-06."
+        assert hedged(finalize(record(), msg, "IT-001.json")) == []
+
+    def test_a_date_with_no_hedge_in_its_sentence_is_not_flagged(self):
+        msg = "Access 2026-10-23 to 2026-11-06. The audit closes on 2026-12-15. I might be slow to reply."
+        assert hedged(finalize(record(), msg, "IT-001.json")) == []  # cue and date are in different sentences
+
+    def test_a_hedge_inside_a_labelled_correction_is_left_to_the_correction_check(self):
+        # the model kept the OLD end date, so 2026-11-09 is not "used": without the skip this would be flagged as a
+        # hedged alternative; with it, the correction check owns the sentence and reports a different issue
+        msg = "Access 2026-10-23 to 2026-11-06. (Correction: perhaps the end is 2026-11-09.)"
+        e = finalize(record(), msg, "IT-001.json")  # start 2026-10-23, end 2026-11-06
+        assert hedged(e) == []
+        assert any(i.startswith("correction-ignored: dates") for i in e["issues"])
+
+    def test_idempotent_and_one_issue_per_message(self):
+        e = finalize(record(end_date="2026-12-03"), "Until 2026-12-03. Maybe 2026-12-08, or perhaps 2026-12-09.",
+                     "IT-001.json")
+        once = copy.deepcopy(e)
+        finalize(e, "Until 2026-12-03. Maybe 2026-12-08, or perhaps 2026-12-09.", "IT-001.json")
+        assert e == once and len(hedged(e)) == 1
+
+    def test_routing_treats_a_hedged_alternative_as_needing_clarification(self):
+        r = route(record(issues=["hedged-alternative: something"]), "m", "IT-001.json")
+        assert (r["owner"], r["status"], r["next_action"]) == (DESK, "needs-information", "clarify")
+        assert r["reasons"] == ["a hedged alternative date is floated in the message but not resolved"]
+
+    def test_precision_and_recall_on_every_message_we_have_with_correct_gold_extractions(self):
+        """Gold extractions (end/start null where the message hedges) must flag exactly the hedged-date messages."""
+        flagged = {}
+        for name in ("policy_probe", "policy_holdout", "policy_dev"):
+            for doc in GOLD[name]:
+                e = finalize(gold_extraction(name, doc), fixture_message(name, doc), doc)
+                if hedged(e):
+                    flagged.setdefault(name, []).append(doc)
+        # the supplied messages never hedge a date
+        for doc, exp in EXPECTED.items():
+            path = REQUESTS / doc
+            if path.exists():
+                e = finalize(record(**{**exp["fields"], "business_purpose": "x"}),
+                             json.loads(path.read_text())["message"], doc)
+                assert hedged(e) == [], doc
+        assert flagged == {"policy_holdout": ["IT-225.json"],
+                           "policy_dev": ["IT-251.json", "IT-252.json", "IT-253.json", "IT-254.json", "IT-255.json"]}
+
+
 # ================================================================================= live-check fixtures stay honest
-@pytest.mark.parametrize("name,count", [("policy_probe", 11), ("policy_holdout", 8)])
+@pytest.mark.parametrize("name,count", [("policy_probe", 11), ("policy_holdout", 8), ("policy_dev", 9),
+                                        ("policy_holdout2", 10)])
 def test_live_check_expectations_are_grounded_in_their_messages(name, count):
     """tests/fixtures/<name>/* + tests/<name>_expected.json are fresh-wording sets for the live check
     (python -m intake intake tests/fixtures/<name>; python -m intake accuracy --expected ...). Every expected
@@ -449,8 +558,9 @@ def test_a_policy_change_re_applies_the_checks_to_stored_extractions_without_cal
     "Jo Smith, Billing:",                 # compact "Name, Team" introductions give requester AND team
     "never leave\n  team null",
     'without an article ("the")',         # system/team are bare names
-    "A hedged or tentative alternative",  # a hedge still contradicts the stated value (found by live sampling)
-    'Only the word "correction" resolves a conflict',
+    "Hedged or tentative alternatives count too",   # a hedge still contradicts the stated value (live sampling)
+    "check EVERY field you filled",                 # ...for every field, not just the environment
+    "A hedge that names NO different concrete value",  # ...but a hedge naming no alternative changes nothing
     'ONLY for date fields',               # relative-date is a date tag, not a catch-all
 ])
 def test_the_extraction_prompt_keeps_the_rules_found_by_live_probing(needle):

@@ -33,8 +33,15 @@ Rules:
   in supporting_quotes, and add an issue of the form "conflict: <field_name> ..." (e.g. "conflict: environment staging vs production").
   NEVER choose one of the conflicting values: the field MUST be null. This applies even when one value appears
   in the main request sentence and the other later in the text, unless the later text is explicitly labelled a correction.
-  A hedged or tentative alternative ("might need X instead", "maybe X", "not sure yet", "I think X") STILL contradicts
-  the stated value: it is a conflict, not a reason to pick one. Only the word "correction" resolves a conflict.
+  Hedged or tentative alternatives count too. Before answering, check EVERY field you filled: does any sentence offer
+  a different concrete value for it, however tentatively ("maybe", "perhaps", "possibly", "tentatively", "might",
+  "could be", "I think", "not sure if it should be", "or ... instead", "rather than")? If so that field is in
+  conflict: null, quote both values, and add "conflict: <field> <value A> vs <value B>". This covers every field,
+  including start_date, end_date, permission and environment. Examples: dates "5 May to 7 May" followed by "perhaps
+  until 12 May instead" -> end_date null; "read access ... maybe write instead" -> permission null; "from 5 May ...
+  not sure if the start should be 3 May" -> start_date null. A hedge that names NO different concrete value ("it might
+  take longer", "not sure how long") is not a conflict: keep the stated value. Only the word "correction" resolves a
+  conflict.
 - "conflict:" is ONLY for two contradictory values stated for the same field. If start_date is after end_date, that is
   NOT a conflict: keep both dates exactly as stated and add an issue starting "range:".
 - For every other missing field add an issue starting "missing:" naming the field and why.

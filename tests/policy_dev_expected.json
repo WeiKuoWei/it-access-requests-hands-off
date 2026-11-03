@@ -1,0 +1,182 @@
+{
+ "IT-251.json": {
+  "fields": {
+   "request_id": "IT-251",
+   "request_date": "2026-11-24",
+   "kind": "new",
+   "requester": "Ana Silva",
+   "team": "Finance",
+   "system": "Ledger",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-12-01",
+   "end_date": null,
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-252.json": {
+  "fields": {
+   "request_id": "IT-252",
+   "request_date": "2026-11-24",
+   "kind": "new",
+   "requester": "Ben Okoro",
+   "team": "Support",
+   "system": "Beacon",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": null,
+   "end_date": "2026-12-04",
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-253.json": {
+  "fields": {
+   "request_id": "IT-253",
+   "request_date": "2026-11-24",
+   "kind": "new",
+   "requester": "Cleo Park",
+   "team": "Platform",
+   "system": "Forge",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": null,
+   "end_date": null,
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-254.json": {
+  "fields": {
+   "request_id": "IT-254",
+   "request_date": "2026-11-24",
+   "kind": "new",
+   "requester": "Dan Ruiz",
+   "team": "Data",
+   "system": "Atlas",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-12-01",
+   "end_date": null,
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-255.json": {
+  "fields": {
+   "request_id": "IT-255",
+   "request_date": "2026-11-24",
+   "kind": "new",
+   "requester": "Eve Long",
+   "team": "Research",
+   "system": "Atlas",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-12-03",
+   "end_date": null,
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-256.json": {
+  "fields": {
+   "request_id": "IT-256",
+   "request_date": "2026-11-24",
+   "kind": "new",
+   "requester": "Finn Ode",
+   "team": "Learning",
+   "system": "Beacon",
+   "environment": "staging",
+   "permission": null,
+   "start_date": "2026-12-02",
+   "end_date": "2026-12-04",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-257.json": {
+  "fields": {
+   "request_id": "IT-257",
+   "request_date": "2026-11-24",
+   "kind": "new",
+   "requester": "Gus Hale",
+   "team": "Finance",
+   "system": "Ledger",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-12-01",
+   "end_date": "2026-12-03",
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "owner": "System Owner",
+   "status": "review",
+   "next_action": "review-request"
+  }
+ },
+ "IT-258.json": {
+  "fields": {
+   "request_id": "IT-258",
+   "request_date": "2026-11-24",
+   "kind": "new",
+   "requester": "Hana Voss",
+   "team": "Compliance",
+   "system": "Ledger",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-12-01",
+   "end_date": "2026-12-03",
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "System Owner",
+   "status": "review",
+   "next_action": "review-request"
+  }
+ },
+ "IT-259.json": {
+  "fields": {
+   "request_id": "IT-259",
+   "request_date": "2026-11-24",
+   "kind": "new",
+   "requester": "Ivo Marsh",
+   "team": "Platform",
+   "system": "Forge",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-12-02",
+   "end_date": "2026-12-04",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "owner": "System Owner",
+   "status": "review",
+   "next_action": "review-request"
+  }
+ }
+}

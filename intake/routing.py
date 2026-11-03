@@ -55,6 +55,8 @@ def route(extraction: dict, message: str, document_id: str) -> dict:
         reasons.append("conflicting details")
     if _tagged(issues, "correction-ignored"):
         reasons.append("extraction disagrees with an explicit correction in the message")
+    if _tagged(issues, "hedged-alternative"):
+        reasons.append("a hedged alternative date is floated in the message but not resolved")
     stem = PurePath(document_id).stem
     if e["request_id"] and not ids_match(e["request_id"], stem):
         reasons.append(f"identifier mismatch: message says {e['request_id']}, file is {stem}")

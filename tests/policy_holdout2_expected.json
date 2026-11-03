@@ -1,0 +1,202 @@
+{
+ "IT-231.json": {
+  "fields": {
+   "request_id": "IT-231",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Nora Quinn",
+   "team": "Finance",
+   "system": "Ledger",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-11-02",
+   "end_date": null,
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-232.json": {
+  "fields": {
+   "request_id": "IT-232",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Omar Haddad",
+   "team": "Support",
+   "system": "Beacon",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": null,
+   "end_date": "2026-11-05",
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-233.json": {
+  "fields": {
+   "request_id": "IT-233",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Ruth Adler",
+   "team": "Compliance",
+   "system": "Ledger",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": null,
+   "end_date": null,
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-234.json": {
+  "fields": {
+   "request_id": "IT-234",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Paul Reyes",
+   "team": "Platform",
+   "system": "Forge",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-11-02",
+   "end_date": "2026-11-04",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "owner": "System Owner",
+   "status": "review",
+   "next_action": "review-request"
+  }
+ },
+ "IT-235.json": {
+  "fields": {
+   "request_id": "IT-235",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Dee Walsh",
+   "team": "Learning",
+   "system": "Beacon",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-11-02",
+   "end_date": "2026-11-04",
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "System Owner",
+   "status": "review",
+   "next_action": "review-request"
+  }
+ },
+ "IT-236.json": {
+  "fields": {
+   "request_id": "IT-236",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Sid Verma",
+   "team": "Data",
+   "system": "Atlas",
+   "environment": null,
+   "permission": "read",
+   "start_date": "2026-11-03",
+   "end_date": "2026-11-05",
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-237.json": {
+  "fields": {
+   "request_id": "IT-237",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Gina Park",
+   "team": "Design",
+   "system": "Atlas",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-11-03",
+   "end_date": "2026-11-05",
+   "manager": null
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-238.json": {
+  "fields": {
+   "request_id": "IT-238",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Bo Lindqvist",
+   "team": "Research",
+   "system": "Atlas",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-11-03",
+   "end_date": "2026-11-06",
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "System Owner",
+   "status": "review",
+   "next_action": "review-request"
+  }
+ },
+ "IT-239.json": {
+  "fields": {
+   "request_id": "IT-239",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Alma Cruz",
+   "team": "Sales Ops",
+   "system": "Atlas",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-11-02",
+   "end_date": null,
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-240.json": {
+  "fields": {
+   "request_id": "IT-240",
+   "request_date": "2026-10-26",
+   "kind": "new",
+   "requester": "Fay Nolan",
+   "team": "Finance",
+   "system": "Ledger",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-11-03",
+   "end_date": null,
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ }
+}
