@@ -1,0 +1,1 @@
+good. next do the rate limit / slow response part: make sure one slow message doesn't block the others and the 2,000 message morning works. commit when done.
