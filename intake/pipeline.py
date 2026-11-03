@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from concurrent.futures import ThreadPoolExecutor
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from .config import Config
@@ -11,6 +12,7 @@ from .extract import ExtractionError, extract
 from .logs import get_logger
 from .routing import error_route, route
 from .store import Store
+from .throttle import PROVIDER_KINDS, Breaker, Throttle
 
 log = get_logger()
 
@@ -25,7 +27,8 @@ def _error(kind: str, message: str, document_id: str) -> dict:
 
 
 def process_file(path: Path, store: Store, client, cfg: Config, mode: str = "live",
-                 force: bool = False, sleep=None) -> tuple[str, str]:
+                 force: bool = False, sleep=None, throttle: Throttle | None = None,
+                 breaker: Breaker | None = None) -> tuple[str, str]:
     """Returns (document_id, outcome). Outcomes: reused, rerouted, extracted, error, skipped-busy."""
     document_id = path.name
     fp, policy = cfg.extraction_fp(), cfg.policy_version
@@ -38,8 +41,7 @@ def process_file(path: Path, store: Store, client, cfg: Config, mode: str = "liv
     if not force:
         same = store.find_done(document_id, sha, fp, policy)
         if same:
-            cur = {d["document_id"]: d for d in store.current()}[document_id]["current"]
-            if cur["id"] == same["id"]:
+            if store.latest_finished_id(document_id) == same["id"]:
                 return document_id, "reused"  # nothing to do; current entry already this result
             store.add_derived(same, policy=policy, route=_stored_route(same), mode=same["mode"])
             return document_id, "reused"
@@ -53,17 +55,26 @@ def process_file(path: Path, store: Store, client, cfg: Config, mode: str = "liv
             store.add_derived(prior, policy=policy, route=r, mode=prior["mode"])
             return document_id, "rerouted"
 
+    if breaker and breaker.open:
+        # provider is down: do not wait through retries for every remaining document; make them visible instead
+        return _record_failure(store, cfg, document_id, path, sha, fp, mode, "provider-down-skipped",
+                               "Skipped: the provider failed repeatedly earlier in this run, so no call was made.")
+
     attempt = store.claim(document_id, str(path), sha, fp, policy, cfg.settings(), mode, cfg.lease_s)
     if attempt is None:
         return document_id, "skipped-busy"
     try:
         message = _message(raw)
         kwargs = {"sleep": sleep} if sleep else {}
-        data, meta = extract(client, cfg, message, **kwargs)
+        data, meta = extract(client, cfg, message, throttle=throttle, **kwargs)
         r = route(data, message, document_id)
         store.finish(attempt, state="done", extraction=data, route=r)
+        if breaker:
+            breaker.success()
         return document_id, "extracted"
     except ExtractionError as e:
+        if breaker and e.kind in PROVIDER_KINDS:
+            breaker.failure()
         store.finish(attempt, state="error", route=error_route(), error=_error(e.kind, e.message, document_id))
     except ValueError as e:
         store.finish(attempt, state="error", route=error_route(), error=_error("bad-export", str(e), document_id))
@@ -100,10 +111,36 @@ def run(paths: list[Path], store: Store, client, cfg: Config, mode: str = "live"
         sleep=None) -> dict[str, str]:
     """Process documents with a bounded worker pool; results are visible in the store as each finishes."""
     results: dict[str, str] = {}
-    with ThreadPoolExecutor(max_workers=max(1, cfg.workers)) as pool:
-        futures = [pool.submit(process_file, p, store, client, cfg, mode, force, sleep) for p in paths]
-        for f in futures:
+    throttle = Throttle(cfg.min_interval_s)
+    breaker = Breaker(cfg.breaker_threshold)
+    pool = ThreadPoolExecutor(max_workers=max(1, cfg.workers))
+    stop = threading.Event()
+
+    def guarded(p: Path):
+        if stop.is_set():  # an interrupt/fatal error happened: do not claim anything new
+            return p.name, "cancelled"
+        try:
+            return process_file(p, store, client, cfg, mode, force, sleep, throttle, breaker)
+        except BaseException:
+            stop.set()  # set in the worker itself, before it can pick up another document
+            raise
+
+    try:
+        futures = [pool.submit(guarded, p) for p in paths]
+        for f in as_completed(futures):  # report in completion order: a slow document never hides finished ones
             doc, outcome = f.result()
             results[doc] = outcome
             log.info("%s: %s", doc, outcome)
+    except BaseException:
+        # Ctrl-C / fatal error: stop starting new documents. Finished work is already committed; documents
+        # in flight stay 'pending' (visible, reclaimed after the lease or by `retry`); the rest were never claimed.
+        pool.shutdown(wait=False, cancel_futures=True)
+        released = store.abandon_own_pending()
+        log.error("run interrupted; %d in-flight document(s) released. Re-run intake or `retry` to continue.",
+                  released)
+        raise
+    pool.shutdown(wait=True)
+    if breaker.open:
+        log.error("provider circuit breaker opened; remaining documents were recorded as errors. "
+                  "Run: python -m intake retry")
     return results

@@ -111,6 +111,16 @@ class Store:
                  json.dumps(route.get("reasons")) if route else None,
                  json.dumps(error) if error else None, sha, now(), attempt_id))
 
+    def abandon_own_pending(self) -> int:
+        """Release this process's in-flight claims (used on interrupt) so a rerun does not wait out the lease."""
+        with self._conn() as c:
+            cur = c.execute(
+                "UPDATE attempts SET state='abandoned', finished_at=?, lease_expires=NULL, error=? "
+                "WHERE state='pending' AND operator=?",
+                (now(), json.dumps({"kind": "interrupted", "message": "run interrupted before this finished"}),
+                 operator()))
+            return cur.rowcount
+
     def add_derived(self, base: dict, *, policy, route, mode, settings=None) -> int:
         """New 'done' attempt reusing a stored extraction (unchanged source re-seen, or re-routing only)."""
         with self._conn() as c:
@@ -135,6 +145,13 @@ class Store:
         with self._conn() as c:
             return _row(c.execute(q + " ORDER BY id DESC LIMIT 1", args).fetchone())
 
+    def latest_finished_id(self, document_id) -> int | None:
+        """Id of the document's current (latest done/error) attempt. One indexed query, safe at 2,000+ docs."""
+        with self._conn() as c:
+            r = c.execute("SELECT id FROM attempts WHERE document_id=? AND state IN ('done','error') "
+                          "ORDER BY id DESC LIMIT 1", (document_id,)).fetchone()
+            return r["id"] if r else None
+
     def current(self) -> list[dict]:
         """One entry per document: the latest finished attempt, plus pending/last-valid context."""
         with self._conn() as c:
@@ -153,7 +170,7 @@ class Store:
             if cur and cur["state"] == "error":
                 last_valid = next((a for a in reversed(finished) if a["state"] == "done"), None)
             out.append({"document_id": doc, "current": cur, "pending": pending, "last_valid": last_valid,
-                        "attempt_count": len(atts)})
+                        "last_attempt": atts[-1], "attempt_count": len(atts)})
         return out
 
     def history(self, document_id=None) -> list[dict]:

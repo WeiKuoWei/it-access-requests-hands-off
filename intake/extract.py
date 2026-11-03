@@ -45,11 +45,12 @@ Return only the JSON object matching the schema."""
 class ExtractionError(Exception):
     """Failure to obtain a valid extraction. `retryable` hints whether a retry could help."""
 
-    def __init__(self, kind: str, message: str, retryable: bool = False):
+    def __init__(self, kind: str, message: str, retryable: bool = False, retry_after: float | None = None):
         super().__init__(message)
         self.kind = kind
         self.message = message
         self.retryable = retryable
+        self.retry_after = retry_after
 
 
 def build_request(cfg: Config, message: str) -> dict:
@@ -76,12 +77,21 @@ def make_client(cfg: Config):
     return openai.OpenAI(base_url=cfg.base_url, timeout=cfg.timeout_s, max_retries=0)
 
 
+def _retry_after(exc: Exception) -> float | None:
+    """Seconds from a numeric Retry-After header, capped at 60; None if absent or not a number."""
+    try:
+        v = float(exc.response.headers.get("retry-after"))
+    except (AttributeError, TypeError, ValueError):
+        return None
+    return min(max(v, 0.0), 60.0)
+
+
 def _classify(exc: Exception) -> ExtractionError:
     import openai
 
     text = redact(str(exc))[:300]
     if isinstance(exc, openai.RateLimitError):
-        return ExtractionError("rate-limit", "Provider rate limit (429): " + text, True)
+        return ExtractionError("rate-limit", "Provider rate limit (429): " + text, True, _retry_after(exc))
     if isinstance(exc, openai.APITimeoutError):
         return ExtractionError("timeout", "Provider request timed out: " + text, True)
     if isinstance(exc, openai.APIConnectionError):
@@ -151,12 +161,14 @@ def normalize_conflicts(data: dict) -> dict:
     return data
 
 
-def extract(client, cfg: Config, message: str, sleep=time.sleep) -> tuple[dict, dict]:
+def extract(client, cfg: Config, message: str, sleep=time.sleep, throttle=None) -> tuple[dict, dict]:
     """Return (extraction, meta). Retries retryable failures with bounded backoff."""
     req = build_request(cfg, message)
     last: ExtractionError | None = None
     for attempt in range(1, cfg.max_attempts + 1):
         try:
+            if throttle:
+                throttle.wait()  # shared pacing; also holds workers back while a 429 cooldown is active
             try:
                 resp = client.chat.completions.create(**req)
             except ExtractionError:
@@ -164,13 +176,20 @@ def extract(client, cfg: Config, message: str, sleep=time.sleep) -> tuple[dict, 
             except Exception as exc:  # provider SDK errors
                 raise _classify(exc)
             data = parse_response(resp, message)
+            if throttle:
+                throttle.success()
             return data, {"attempts": attempt, "response_id": getattr(resp, "id", None)}
         except ExtractionError as e:
             last = e
             log.warning("extraction attempt %d/%d failed (%s)", attempt, cfg.max_attempts, e.kind)
             if not e.retryable or attempt == cfg.max_attempts:
                 break
-            sleep(cfg.backoff_base_s * (2 ** (attempt - 1)) * (0.5 + random.random()))
+            backoff = cfg.backoff_base_s * (2 ** (attempt - 1)) * (0.5 + random.random())
+            if e.kind == "rate-limit" and throttle:
+                # one shared cooldown for every worker instead of each retrying on its own clock
+                throttle.penalize(e.retry_after if e.retry_after is not None else backoff)
+            else:
+                sleep(backoff)
     assert last is not None
     last.message = f"{last.message} (after {attempt} attempt(s))"
     raise last

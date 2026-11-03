@@ -19,7 +19,9 @@ export OPENAI_API_KEY=...                          # supplied by the facilitator
 | `INTAKE_TIMEOUT_S` | `60` | per request |
 | `INTAKE_MAX_ATTEMPTS` | `4` | per document, retryable failures only |
 | `INTAKE_BACKOFF_S` | `2` | exponential base, with jitter |
-| `INTAKE_WORKERS` | `4` | concurrent documents (rate-limit control) |
+| `INTAKE_WORKERS` | `4` | concurrent documents; the model quota is shared with other tools, so raise with care |
+| `INTAKE_MIN_INTERVAL_S` | `0` | minimum spacing between model calls across all workers (a 429 widens it automatically, then it decays back) |
+| `INTAKE_BREAKER_THRESHOLD` | `10` | consecutive provider-level failures before the run stops calling the model and records the rest as retryable errors; `0` disables |
 | `INTAKE_LEASE_S` | `600` | when an in-progress claim is considered abandoned |
 | `INTAKE_DB` | `data/intake.db` | SQLite store (all attempts and history) |
 | `INTAKE_OUT_DIR` | `deliverables/` | exported files |
@@ -46,6 +48,12 @@ Exit code of `intake` is 1 if any document ended in `error`.
 - `intake/routing.py` — deterministic policy rules applied in order (override → withdrawal → needs-information → Security Review → System Owner). The model never decides routing; message text is data.
 - `intake/store.py` — append-only SQLite attempts; "current" is derived. `intake/pipeline.py` — per-document reuse / claim / extract / route.
 - Reuse: unchanged source hash + model settings + policy version → no model call. Changed source or settings → new attempt, old one retained. Changed policy only → re-route stored extraction, no model call. Change `POLICY_VERSION` in `intake/config.py` when the policy changes.
+
+## Large intakes, rate limits and outages
+- Reviewers can run `queue` at any time during an intake; finished documents appear as soon as each completes, and in-flight ones are listed as pending. A slow or hung message holds one worker for at most its timeout and retries, not the whole run.
+- A 429 pauses all workers together (honouring `Retry-After`) and slows the pace until calls succeed again. For a 2,000-message morning start with `INTAKE_WORKERS=8` only if the quota owner agrees; expect roughly `documents × seconds-per-call ÷ workers`.
+- If the provider is down, the run stops after `INTAKE_BREAKER_THRESHOLD` consecutive failures and records every remaining document as an error with its retry command. Once the service is back: `python -m intake status` then `python -m intake retry`.
+- Ctrl-C is safe: finished work stays, in-flight documents are released and shown as pending; re-run the same `intake` command to continue (finished documents are skipped).
 
 ## Handover notes
 - Failure recovery: run `python -m intake status`, then `python -m intake retry`. Documents interrupted mid-call appear as pending and are retried after the lease expires (or immediately with `retry <doc>`).

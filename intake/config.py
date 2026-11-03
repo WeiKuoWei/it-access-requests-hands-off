@@ -32,6 +32,8 @@ class Config:
     max_attempts: int = field(default_factory=lambda: int(_env("INTAKE_MAX_ATTEMPTS", "4")))
     backoff_base_s: float = field(default_factory=lambda: float(_env("INTAKE_BACKOFF_S", "2")))
     workers: int = field(default_factory=lambda: int(_env("INTAKE_WORKERS", "4")))
+    min_interval_s: float = field(default_factory=lambda: float(_env("INTAKE_MIN_INTERVAL_S", "0")))
+    breaker_threshold: int = field(default_factory=lambda: int(_env("INTAKE_BREAKER_THRESHOLD", "10")))
     lease_s: int = field(default_factory=lambda: int(_env("INTAKE_LEASE_S", "600")))
     db_path: str = field(default_factory=lambda: _env("INTAKE_DB", str(ROOT / "data" / "intake.db")))
     out_dir: str = field(default_factory=lambda: _env("INTAKE_OUT_DIR", str(ROOT / "deliverables")))

@@ -45,6 +45,11 @@ def build(store: Store) -> tuple[list[dict], dict, list[dict]]:
             pending.append({"document_id": doc, "since": p["started_at"], "operator": p["operator"],
                             "source_sha256": p["source_sha256"]})
         if not a:
+            la = item["last_attempt"]
+            if not item["pending"] and la["state"] == "abandoned":  # interrupted before any result existed
+                pending.append({"document_id": doc, "since": la["started_at"], "operator": la["operator"],
+                                "source_sha256": la["source_sha256"],
+                                "note": "interrupted before finishing; re-run intake or: " + retry_command(doc)})
             continue
         rec = {"document_id": doc, "source_sha256": a["source_sha256"], "extraction": a["extraction"],
                "status": a["status"], "owner": a["owner"], "next_action": a["next_action"],
