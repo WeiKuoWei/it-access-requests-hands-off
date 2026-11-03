@@ -37,7 +37,7 @@ python -m intake retry [IT-007.json ...]             # retry failed/stuck docume
 python -m intake history [IT-007.json]               # every attempt: hash, settings, policy, result
 python -m intake export                              # rewrite deliverables/ from the store
 python -m intake check-export                        # prove extractions.jsonl and queue.json are from the same export
-python -m intake accuracy                            # compare current records with tests/expected.json
+python -m intake accuracy [--expected FILE]          # compare current records with tests/expected.json (or another expected-facts file)
 python -m pytest -q                                  # tests (mocked provider, offline)
 python -m intake --mock intake materials/requests    # offline development run (no credentials)
 ```
@@ -49,12 +49,14 @@ Exit code of `intake` is 1 if any document ended in `error`.
 ## How it works
 - `intake/extract.py` — prompt, request config, response validation (refusal, finish reason, JSON, schema, ISO dates, exact-substring quotes), bounded retries.
 - `intake/routing.py` — deterministic policy rules applied in order (override → withdrawal → needs-information → Security Review → System Owner). The model never decides routing; message text is data.
+- `intake/finalize.py` — deterministic checks on every extraction before routing: an identifier in the message that differs from the filename is recorded as a `mismatch:` issue (the stated ID is kept); every null field gets an issue that explains it; a value that contradicts an explicit "Correction: …" clause is flagged `correction-ignored:` (never overwritten) and the request goes to needs-information; the correction text is kept in `supporting_quotes`. Re-applied to stored extractions, with no model call, when the policy version changes.
+- Withdrawals, corrections and mismatches follow `materials/office-policy.md`: a withdrawal with `request_id` and `request_date` → IT Service Desk / `confirm-withdrawal` even if other fields are null (and even if its ID mismatches, because that rule comes first); each message is its own document, and absence from a later batch withdraws nothing.
 - `intake/store.py` — append-only SQLite attempts; "current" is derived. `intake/pipeline.py` — per-document reuse / claim / extract / route.
 - Reuse: unchanged source hash + model settings + policy version + provider mode (live/mock) → no model call. Changed source or settings → new attempt, old one retained. Changed policy only → re-route stored extraction, no model call.
 
 ## Changing the model configuration or the policy
 - **Settings that invalidate results** (they are part of the settings fingerprint and are stored with every record): `OPENAI_MODEL`, `INTAKE_TEMPERATURE`, `INTAKE_MAX_OUTPUT_TOKENS`, the extraction prompt and `snapshot.schema.json`. Operational settings (workers, timeout, retries, backoff, lease, throttle, breaker, paths) do not invalidate anything.
-- **Policy version** is derived automatically: `INTAKE_POLICY_LABEL` (default `northstar-policy-2026-10`) plus a hash of `materials/office-policy.md` and `intake/routing.py`. Edit either file and every result routed under the old text becomes stale; no number to bump. Set a new label for a named release (e.g. `INTAKE_POLICY_LABEL=2026-11-rev2`); the hash is always appended.
+- **Policy version** is derived automatically: `INTAKE_POLICY_LABEL` (default `northstar-policy-2026-10`) plus a hash of `materials/office-policy.md`, `intake/routing.py` and `intake/finalize.py`. Edit any of them and every result routed under the old text becomes stale; no number to bump. Set a new label for a named release (e.g. `INTAKE_POLICY_LABEL=2026-11-rev2`); the hash is always appended.
 - **Workflow:** change the setting or policy → `python -m intake queue` / `status` now flag affected results as `[STALE: settings|policy]` → `python -m intake refresh --dry-run` shows each document, whether it needs a model call (`re-extract`) or only a re-route, and the exact change (e.g. `model: gpt-4.1-mini -> …`) → `python -m intake refresh`. A policy-only refresh makes no model calls and needs no credentials. `refresh` is idempotent and resumable: after an interruption, run it again and only unfinished documents are processed.
 - Stale results stay in the queue until refreshed (they are still the latest result). Every refresh adds a new attempt; the earlier result remains in `history` with its own settings, policy version and source hash. Rolling a setting back reuses the earlier result with no model call.
 - If a refresh attempt fails, the document shows as an error with its retry command and the earlier result is labelled with the settings that produced it (`earlier_result`). Use `retry` for failures, `refresh` for stale results.

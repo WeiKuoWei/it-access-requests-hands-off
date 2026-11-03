@@ -178,7 +178,8 @@ def cmd_check_export(args, cfg, store):
 
 
 def cmd_accuracy(args, cfg, store):
-    expected = json.loads((ROOT / "tests" / "expected.json").read_text())
+    expected = json.loads(Path(args.expected).read_text()) if args.expected else \
+        json.loads((ROOT / "tests" / "expected.json").read_text())
     records, _, _ = report.build(store)
     res = report.compare(records, expected)
     print(f"field exact match: {res['field_hits']}/{res['field_total']}")
@@ -209,7 +210,8 @@ def main(argv=None) -> int:
     p.add_argument("document", nargs="?")
     sub.add_parser("export", help="write deliverables/ from the store")
     sub.add_parser("check-export", help="verify extractions.jsonl and queue.json come from the same export")
-    sub.add_parser("accuracy", help="compare current extractions with tests/expected.json")
+    p = sub.add_parser("accuracy", help="compare current extractions with tests/expected.json (or --expected FILE)")
+    p.add_argument("--expected", help="alternative expected-facts file, e.g. tests/policy_probe_expected.json")
     args = ap.parse_args(argv)
     cfg = Config()
     store = Store(cfg.db_path)

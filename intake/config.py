@@ -12,10 +12,11 @@ SCHEMA_PATH = ROOT / "snapshot.schema.json"
 
 POLICY_PATH = ROOT / "materials" / "office-policy.md"
 ROUTING_PATH = ROOT / "intake" / "routing.py"
+FINALIZE_PATH = ROOT / "intake" / "finalize.py"  # deterministic checks that run on every extraction before routing
 
 
 def _policy_version() -> str:
-    """Human label + content hash of the policy text and the routing rules that implement it.
+    """Human label + content hash of the policy text and the code that implements it (routing + finalize).
 
     Editing office-policy.md or routing.py changes this automatically, so affected results are refreshed
     without anyone having to remember to bump a number. Set INTAKE_POLICY_LABEL to name a release
@@ -23,7 +24,7 @@ def _policy_version() -> str:
     """
     label = os.environ.get("INTAKE_POLICY_LABEL", "northstar-policy-2026-10")
     h = hashlib.sha256()
-    for p in (POLICY_PATH, ROUTING_PATH):
+    for p in (POLICY_PATH, ROUTING_PATH, FINALIZE_PATH):
         h.update(p.read_bytes())
     return f"{label}+{h.hexdigest()[:8]}"
 

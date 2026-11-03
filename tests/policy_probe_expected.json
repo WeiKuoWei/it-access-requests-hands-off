@@ -1,0 +1,222 @@
+{
+ "IT-201.json": {
+  "fields": {
+   "request_id": "IT-201",
+   "request_date": null,
+   "kind": "withdrawal",
+   "requester": "Dana Cole",
+   "team": "Finance",
+   "system": null,
+   "environment": null,
+   "permission": null,
+   "start_date": null,
+   "end_date": null,
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "status": "needs-information",
+   "owner": "IT Service Desk",
+   "next_action": "clarify"
+  }
+ },
+ "IT-202.json": {
+  "fields": {
+   "request_id": "IT-202",
+   "request_date": "2026-10-23",
+   "kind": "withdrawal",
+   "requester": "Omar Reyes",
+   "team": "Support",
+   "system": "Beacon",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": null,
+   "end_date": null,
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "status": "review",
+   "owner": "IT Service Desk",
+   "next_action": "confirm-withdrawal"
+  }
+ },
+ "IT-203.json": {
+  "fields": {
+   "request_id": "IT-230",
+   "request_date": "2026-10-23",
+   "kind": "withdrawal",
+   "requester": "Lee Park",
+   "team": "Sales",
+   "system": null,
+   "environment": null,
+   "permission": null,
+   "start_date": null,
+   "end_date": null,
+   "manager": "Elena Park"
+  },
+  "route": {
+   "status": "review",
+   "owner": "IT Service Desk",
+   "next_action": "confirm-withdrawal"
+  }
+ },
+ "IT-204.json": {
+  "fields": {
+   "request_id": "IT-204",
+   "request_date": "2026-10-23",
+   "kind": "new",
+   "requester": "Priya Nair",
+   "team": "Data",
+   "system": "Atlas",
+   "environment": "staging",
+   "permission": "write",
+   "start_date": "2026-10-27",
+   "end_date": "2026-10-30",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "status": "review",
+   "owner": "Security Review",
+   "next_action": "review-risk-then-owner"
+  }
+ },
+ "IT-205.json": {
+  "fields": {
+   "request_id": "IT-205",
+   "request_date": "2026-10-23",
+   "kind": "new",
+   "requester": "Sam Ortiz",
+   "team": "Platform",
+   "system": "Forge",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-10-27",
+   "end_date": "2026-10-29",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "status": "review",
+   "owner": "System Owner",
+   "next_action": "review-request"
+  }
+ },
+ "IT-206.json": {
+  "fields": {
+   "request_id": "IT-206",
+   "request_date": "2026-10-23",
+   "kind": "new",
+   "requester": "Rae Lin",
+   "team": "Support",
+   "system": "Beacon",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-10-27",
+   "end_date": "2026-11-02",
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "status": "review",
+   "owner": "System Owner",
+   "next_action": "review-request"
+  }
+ },
+ "IT-207.json": {
+  "fields": {
+   "request_id": "IT-207",
+   "request_date": "2026-10-23",
+   "kind": "new",
+   "requester": "Kim Ode",
+   "team": "Platform",
+   "system": "Forge",
+   "environment": "production",
+   "permission": "read",
+   "start_date": "2026-10-27",
+   "end_date": "2026-10-28",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "status": "review",
+   "owner": "Security Review",
+   "next_action": "review-risk-then-owner"
+  }
+ },
+ "IT-208.json": {
+  "fields": {
+   "request_id": "IT-208",
+   "request_date": "2026-10-23",
+   "kind": "new",
+   "requester": "Tom Vega",
+   "team": "Research",
+   "system": "Atlas",
+   "environment": null,
+   "permission": "read",
+   "start_date": "2026-10-27",
+   "end_date": "2026-10-30",
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "status": "needs-information",
+   "owner": "IT Service Desk",
+   "next_action": "clarify"
+  }
+ },
+ "IT-209.json": {
+  "fields": {
+   "request_id": "IT-209",
+   "request_date": "2026-10-23",
+   "kind": "new",
+   "requester": "Uma Reed",
+   "team": "Learning",
+   "system": "Beacon",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": null,
+   "end_date": null,
+   "manager": "Elena Park"
+  },
+  "route": {
+   "status": "needs-information",
+   "owner": "IT Service Desk",
+   "next_action": "clarify"
+  }
+ },
+ "IT-210.json": {
+  "fields": {
+   "request_id": "IT-211",
+   "request_date": "2026-10-23",
+   "kind": "new",
+   "requester": "Joe Park",
+   "team": "Compliance",
+   "system": "Ledger",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-10-27",
+   "end_date": "2026-10-28",
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "status": "needs-information",
+   "owner": "IT Service Desk",
+   "next_action": "clarify"
+  }
+ },
+ "IT-212.json": {
+  "fields": {
+   "request_id": "IT-212",
+   "request_date": "2026-10-23",
+   "kind": "new",
+   "requester": "Ana Cruz",
+   "team": "Design",
+   "system": "Atlas",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-10-27",
+   "end_date": "2026-10-28",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "status": "review",
+   "owner": "System Owner",
+   "next_action": "review-request"
+  }
+ }
+}

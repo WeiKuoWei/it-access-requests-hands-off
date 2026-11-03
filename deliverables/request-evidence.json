@@ -157,7 +157,7 @@
     "max_output_tokens": 1500,
     "prompt_sha256": "f1ce2c6ae9e56f32",
     "schema_sha256": "232e006119d2bc6f",
-    "policy_version": "northstar-policy-2026-10+13652306"
+    "policy_version": "northstar-policy-2026-10+1af024e9"
   },
   "retry_policy": {
     "max_attempts": 4,

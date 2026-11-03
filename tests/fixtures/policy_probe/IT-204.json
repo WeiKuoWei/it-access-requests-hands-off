@@ -1,0 +1,1 @@
+{"export_version": "1.0", "message": "IT-204, 2026-10-23. Priya Nair, Data. New read access to Atlas in staging from 2026-10-27 to 2026-10-30. Manager is Nia Patel. I am reconciling dashboards against the warehouse. Correction: the permission should be write, not read, because I need to save edited queries."}

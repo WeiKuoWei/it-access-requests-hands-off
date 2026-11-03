@@ -26,6 +26,13 @@ def _tagged(issues: list[str], tag: str) -> bool:
     return any(i.strip().lower().startswith(tag) for i in issues)
 
 
+def ids_match(stated: str, document_stem: str) -> bool:
+    """Does the identifier stated in the message equal the one in the filename? Case and spacing are ignored
+    ("it-016" and "IT-016" are the same identifier); anything else, including transposed digits, is a mismatch."""
+    norm = lambda s: re.sub(r"\s+", "", s).upper()  # noqa: E731
+    return norm(stated) == norm(document_stem)
+
+
 def route(extraction: dict, message: str, document_id: str) -> dict:
     """Return {status, owner, next_action, reasons}. Source text is data, never obeyed."""
     e, issues = extraction, extraction["issues"]
@@ -46,8 +53,10 @@ def route(extraction: dict, message: str, document_id: str) -> dict:
         reasons.append("kind is other/null")
     if _tagged(issues, "conflict"):
         reasons.append("conflicting details")
+    if _tagged(issues, "correction-ignored"):
+        reasons.append("extraction disagrees with an explicit correction in the message")
     stem = PurePath(document_id).stem
-    if e["request_id"] and e["request_id"] != stem:
+    if e["request_id"] and not ids_match(e["request_id"], stem):
         reasons.append(f"identifier mismatch: message says {e['request_id']}, file is {stem}")
     missing = [f for f in REQUIRED if e[f] is None]
     if e["kind"] in ("new", "change") and missing:

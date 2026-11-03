@@ -166,8 +166,10 @@ class Store:
                  operator()))
             return cur.rowcount
 
-    def add_derived(self, base: dict, *, policy, route, mode, settings=None) -> int:
-        """New 'done' attempt reusing a stored extraction (unchanged source re-seen, or re-routing only)."""
+    def add_derived(self, base: dict, *, policy, route, mode, settings=None, extraction=None) -> int:
+        """New 'done' attempt reusing a stored extraction (unchanged source re-seen, or re-routing only).
+
+        `extraction` replaces the stored one when deterministic checks were re-applied under a new policy."""
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
             try:
@@ -184,7 +186,7 @@ class Store:
                     "settings,state,extraction,status,owner,next_action,reasons,mode,operator,started_at,"
                     "finished_at,reused_from) VALUES (?,?,?,?,?,?, 'done',?,?,?,?,?,?,?,?,?,?)",
                     (base["document_id"], base["source_path"], base["source_sha256"], base["extraction_fp"], policy,
-                     json.dumps(settings or base["settings"]), json.dumps(base["extraction"]),
+                     json.dumps(settings or base["settings"]), json.dumps(extraction or base["extraction"]),
                      route["status"], route["owner"], route["next_action"], json.dumps(route["reasons"]),
                      mode, operator(), now(), now(), base["id"]))
                 c.execute("COMMIT")

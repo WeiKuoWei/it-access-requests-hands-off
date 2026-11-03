@@ -1,6 +1,7 @@
 """Per-document processing: reuse, claim, extract, route, record. Each document is independent."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import threading
@@ -9,6 +10,7 @@ from pathlib import Path
 
 from .config import Config
 from .extract import ExtractionError, extract
+from .finalize import finalize
 from .logs import get_logger
 from .routing import error_route, route
 from .store import AlreadyDone, StateChanged, Store
@@ -65,6 +67,7 @@ def process_file(path: Path, store: Store, client, cfg: Config, mode: str = "liv
         message = _message(raw)
         kwargs = {"sleep": sleep} if sleep else {}
         data, meta = extract(client, cfg, message, throttle=throttle, **kwargs)
+        data = finalize(data, message, document_id)  # deterministic policy checks before routing
         r = route(data, message, document_id)
         store.finish(attempt, state="done", extraction=data, route=r)
         if breaker:
@@ -97,8 +100,10 @@ def _reuse(store: Store, cfg: Config, document_id: str, path: Path, raw: bytes, 
             msg = _message(raw)
         except ValueError as e:
             return _record_failure(store, cfg, document_id, path, sha, fp, mode, "bad-export", str(e))[1]
-        store.add_derived(prior, policy=policy, route=route(prior["extraction"], msg, document_id),
-                          mode=prior["mode"])
+        # the policy/rules changed: re-apply the deterministic checks to the stored model output, then re-route
+        extraction = finalize(copy.deepcopy(prior["extraction"]), msg, document_id)
+        store.add_derived(prior, policy=policy, route=route(extraction, msg, document_id), mode=prior["mode"],
+                          extraction=extraction)
         return "rerouted"
     return None
 

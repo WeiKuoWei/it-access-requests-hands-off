@@ -54,5 +54,27 @@ What went wrong and how it was repaired:
 
 **Limits:** the prompt was tuned while looking at these same 20 messages, so 231/231 is optimistic for unseen wording. The single paraphrase (IT-101) is one sample. Each configuration was run once; temperature 0 is not guaranteed deterministic. Do not treat this as a general accuracy estimate.
 
+## Withdrawal, correction and identifier-mismatch handling (fresh-wording live probe)
+The 20 supplied messages contain one withdrawal (IT-005), two explicit corrections (IT-008, IT-015) and one identifier mismatch (IT-016), each in a single wording. To see whether the handling generalises, I wrote **11 further messages** (`tests/fixtures/policy_probe/`, expected facts in `tests/policy_probe_expected.json`, written from the message text and the policy, not from output; a test checks that every expected value literally appears in its message). Cases: a withdrawal with no date, a withdrawal that restates the original details, a withdrawal whose stated ID differs from the file, corrections of the permission / the manager / only the end date / the environment / a mistyped request ID, a correction that replaces dates with a relative date, an *unlabelled* change of mind (must stay unresolved), and a plain identifier mismatch.
+
+Reproduce with a scratch database (live provider, 11 calls):
+```
+INTAKE_DB=/tmp/probe.db INTAKE_OUT_DIR=/tmp/probe-out python -m intake intake tests/fixtures/policy_probe
+INTAKE_DB=/tmp/probe.db INTAKE_OUT_DIR=/tmp/probe-out python -m intake accuracy --expected tests/policy_probe_expected.json
+```
+**Live observation** (`gpt-4.1-mini`, settings fingerprint `32d1a53445ef7558`, one run, 2026-11-04): **119/121 fields exact, routing 10/11**, using the same counting rules as above (11 fields × 11 documents).
+
+| | result |
+|---|---|
+| withdrawals (IT-201, IT-202, IT-203) | routed as the policy requires: no date → clarify; complete → confirm-withdrawal, including the one with a mismatched ID (rule 2 precedes the mismatch rule) |
+| corrections (IT-204–207, IT-209, IT-212) | all corrected values applied correctly; each correction preserved in `supporting_quotes`; the relative-date correction left the dates null |
+| unlabelled change of mind (IT-208) | left unresolved (environment null, `conflict:` issue) → clarify |
+| identifier mismatches (IT-203, IT-210) | routing was correct but the model recorded **no** issue in 3 of 3 mismatch cases (these two and IT-016); intake now adds `mismatch:` itself |
+| unexplained nulls | the model left a null with no issue in several records; intake now adds `missing:` for each |
+| **errors** (1 factual error, 1 omission) | IT-202 `system` = `"The Beacon"` (expected `Beacon`); IT-205 `team` = null although "Sam Ortiz, Platform:" states it, which also routed IT-205 to clarify instead of System Owner. Both are model extraction errors outside these three policy areas; intake flags the null but cannot repair either. Not fixed. |
+
+The mismatch and unexplained-null findings above were produced by the live model and then handled by deterministic code (`intake/finalize.py`); the final scores were obtained by re-applying that code to the stored live outputs through a policy refresh (no new model calls). The 20+1 supplied-message scores above are unchanged by it (231/231, 21/21).
+**Limits:** 11 messages, one run, written by me while looking at the supplied samples; the probe is a sanity check on wording, not an estimate of accuracy.
+
 ## Model / configuration
-`OPENAI_MODEL=gpt-4.1-mini` (default), Chat Completions, `temperature=0`, `max_completion_tokens=1500`, `response_format=json_schema` strict with `snapshot.schema.json`, timeout 60 s, up to 4 attempts. Policy version `northstar-policy-2026-10+13652306` (label plus a hash of `office-policy.md` and `routing.py`; the three live runs above were routed under the earlier hand-numbered `northstar-policy-2026-10-v1`, and a policy-only `refresh` re-routed the stored extractions with no model call — field and routing scores are unchanged at 231/231 and 21/21). Full example in `request-evidence.json`.
+`OPENAI_MODEL=gpt-4.1-mini` (default), Chat Completions, `temperature=0`, `max_completion_tokens=1500`, `response_format=json_schema` strict with `snapshot.schema.json`, timeout 60 s, up to 4 attempts. Policy version `northstar-policy-2026-10+1af024e9` (label plus a hash of `office-policy.md`, `routing.py` and `finalize.py`; the three live runs above were routed under the earlier hand-numbered `northstar-policy-2026-10-v1`, and policy-only `refresh` runs re-routed the stored extractions with no model call — field and routing scores are unchanged at 231/231 and 21/21). Full example in `request-evidence.json`.

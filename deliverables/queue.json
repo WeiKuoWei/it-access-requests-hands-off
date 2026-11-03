@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-03T19:12:08+00:00",
+  "generated_at": "2026-11-03T19:21:19+00:00",
   "documents": 21,
   "counts": {
     "review": 12,
@@ -10,14 +10,14 @@
     {
       "document_id": "IT-001.json",
       "source_sha256": "102a69f8fbc3779ec19fb6c761ad34b0c9a001f845b8df3c808f5a79441fbb10",
-      "attempt_id": 64,
+      "attempt_id": 91,
       "status": "review",
       "owner": "System Owner",
       "next_action": "review-request",
       "reasons": [
         "staging/read request"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -32,14 +32,14 @@
     {
       "document_id": "IT-002.json",
       "source_sha256": "007e47d1bd662d246e6d3656b6226b1c512ca4d38d71fc5844b9690ee29c14f6",
-      "attempt_id": 66,
+      "attempt_id": 87,
       "status": "review",
       "owner": "Security Review",
       "next_action": "review-risk-then-owner",
       "reasons": [
         "production, write or admin access"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -54,14 +54,14 @@
     {
       "document_id": "IT-005.json",
       "source_sha256": "fb0f1d6451346e0d411204cb82375ae6f3be26e2791996d6adb5550d969c20f1",
-      "attempt_id": 65,
+      "attempt_id": 86,
       "status": "review",
       "owner": "IT Service Desk",
       "next_action": "confirm-withdrawal",
       "reasons": [
         "withdrawal"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -82,14 +82,14 @@
     {
       "document_id": "IT-006.json",
       "source_sha256": "d342c355bcf72b2d2c50e5fdf2696403bc245f5e7483722095e92b382a1991b2",
-      "attempt_id": 68,
+      "attempt_id": 105,
       "status": "review",
       "owner": "IT Service Desk",
       "next_action": "inspect-message",
       "reasons": [
         "instruction-override attempt in message"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -106,14 +106,14 @@
     {
       "document_id": "IT-007.json",
       "source_sha256": "dd4857323b83b418755981031c2798cd95c83703d09aa5457e3c8105afba646e",
-      "attempt_id": 73,
+      "attempt_id": 89,
       "status": "review",
       "owner": "Security Review",
       "next_action": "review-risk-then-owner",
       "reasons": [
         "production, write or admin access"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -128,14 +128,14 @@
     {
       "document_id": "IT-008.json",
       "source_sha256": "b1e1de4bd67831115149cad2f1caba73f76d0c016bfcd75bdcdefdff8705a66f",
-      "attempt_id": 69,
+      "attempt_id": 90,
       "status": "review",
       "owner": "System Owner",
       "next_action": "review-request",
       "reasons": [
         "staging/read request"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -150,14 +150,14 @@
     {
       "document_id": "IT-012.json",
       "source_sha256": "192b72da5e74647b660d0e1226bb6a0f056fca4ec5ec53b278d7863fd397a791",
-      "attempt_id": 78,
+      "attempt_id": 94,
       "status": "review",
       "owner": "Security Review",
       "next_action": "review-risk-then-owner",
       "reasons": [
         "production, write or admin access"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -172,14 +172,14 @@
     {
       "document_id": "IT-013.json",
       "source_sha256": "e477b1b1ecabb5f445dd80703e532a7ac11247220861a09f550f374dcdea240f",
-      "attempt_id": 74,
+      "attempt_id": 98,
       "status": "review",
       "owner": "Security Review",
       "next_action": "review-risk-then-owner",
       "reasons": [
         "production, write or admin access"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -194,14 +194,14 @@
     {
       "document_id": "IT-015.json",
       "source_sha256": "a8beef34c01e19d3192a97d81b7a9b1a076703733d842b2eb50b002c6723cd2d",
-      "attempt_id": 77,
+      "attempt_id": 104,
       "status": "review",
       "owner": "System Owner",
       "next_action": "review-request",
       "reasons": [
         "staging/read request"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -216,14 +216,14 @@
     {
       "document_id": "IT-018.json",
       "source_sha256": "0f4735183084c428b92ba37fc4247b8792222daff9395ab3feb94b866a8de1bd",
-      "attempt_id": 80,
+      "attempt_id": 100,
       "status": "review",
       "owner": "System Owner",
       "next_action": "review-request",
       "reasons": [
         "staging/read request"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -238,14 +238,14 @@
     {
       "document_id": "IT-019.json",
       "source_sha256": "a2818ebed37c50392ff66143f0f4ecea0509b40a6d42edff4168770041d8e87d",
-      "attempt_id": 81,
+      "attempt_id": 101,
       "status": "review",
       "owner": "Security Review",
       "next_action": "review-risk-then-owner",
       "reasons": [
         "production, write or admin access"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -260,14 +260,14 @@
     {
       "document_id": "IT-101.json",
       "source_sha256": "375aea25795bbdc401e45b7b73c10b661824fdc596479eeb73bbd48541bad924",
-      "attempt_id": 83,
+      "attempt_id": 103,
       "status": "review",
       "owner": "Security Review",
       "next_action": "review-risk-then-owner",
       "reasons": [
         "production, write or admin access"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -282,14 +282,14 @@
     {
       "document_id": "IT-003.json",
       "source_sha256": "80b64509cf82b29006492e97a2c53a165b9df7d22c78da10976a04594f829052",
-      "attempt_id": 67,
+      "attempt_id": 88,
       "status": "needs-information",
       "owner": "IT Service Desk",
       "next_action": "clarify",
       "reasons": [
         "missing: environment, permission, start_date, end_date"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -309,7 +309,7 @@
     {
       "document_id": "IT-004.json",
       "source_sha256": "d5de0f00c5c118e499ed27c6f779139b1b4c483158adf5fd2d86f513b1f9654e",
-      "attempt_id": 76,
+      "attempt_id": 85,
       "status": "needs-information",
       "owner": "IT Service Desk",
       "next_action": "clarify",
@@ -317,7 +317,7 @@
         "conflicting details",
         "missing: environment"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -334,14 +334,14 @@
     {
       "document_id": "IT-009.json",
       "source_sha256": "8aa13b91d4d163827ed609b04c4cf40db2e66e4bbe33cd2211e22c1fa35378ad",
-      "attempt_id": 70,
+      "attempt_id": 95,
       "status": "needs-information",
       "owner": "IT Service Desk",
       "next_action": "clarify",
       "reasons": [
         "missing: manager"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -358,14 +358,14 @@
     {
       "document_id": "IT-010.json",
       "source_sha256": "8d40a28442575c92e012ea57356a5d39b5a5724dd8e85de65118bffbf269ea2d",
-      "attempt_id": 71,
+      "attempt_id": 92,
       "status": "needs-information",
       "owner": "IT Service Desk",
       "next_action": "clarify",
       "reasons": [
         "missing: end_date"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -382,14 +382,14 @@
     {
       "document_id": "IT-011.json",
       "source_sha256": "0776059292b21c7e12a3c5ecf3e81b3afa9743a4bd5e67e897da9bdd15bab345",
-      "attempt_id": 72,
+      "attempt_id": 93,
       "status": "needs-information",
       "owner": "IT Service Desk",
       "next_action": "clarify",
       "reasons": [
         "missing: start_date, end_date"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -407,14 +407,14 @@
     {
       "document_id": "IT-014.json",
       "source_sha256": "8f2ce7407f230ea93d334947f9fd577ef7656f5deb25c5d28b62e5930ce592a1",
-      "attempt_id": 75,
+      "attempt_id": 96,
       "status": "needs-information",
       "owner": "IT Service Desk",
       "next_action": "clarify",
       "reasons": [
         "start_date is after end_date"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -431,14 +431,14 @@
     {
       "document_id": "IT-016.json",
       "source_sha256": "4c470e6fc498eba6b02efd4fcb9e4550b5e6229c608b20d7ceb2e529cd6282c2",
-      "attempt_id": 79,
+      "attempt_id": 97,
       "status": "needs-information",
       "owner": "IT Service Desk",
       "next_action": "clarify",
       "reasons": [
         "identifier mismatch: message says IT-061, file is IT-016"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -448,19 +448,21 @@
       "system": "Forge",
       "environment": "staging",
       "permission": "read",
-      "issues": []
+      "issues": [
+        "mismatch: the message states IT-061 but the document is IT-016"
+      ]
     },
     {
       "document_id": "IT-017.json",
       "source_sha256": "48c112b2079b488d1c8c52585526957f072df1d7985cf8a2d1a71624c7f08a15",
-      "attempt_id": 84,
+      "attempt_id": 99,
       "status": "needs-information",
       "owner": "IT Service Desk",
       "next_action": "clarify",
       "reasons": [
         "kind is other/null"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -483,7 +485,7 @@
     {
       "document_id": "IT-020.json",
       "source_sha256": "05c79e5aeea9a964492143fe9e0731e7926ae987bd935482940ffde658a273ab",
-      "attempt_id": 82,
+      "attempt_id": 102,
       "status": "needs-information",
       "owner": "IT Service Desk",
       "next_action": "clarify",
@@ -491,7 +493,7 @@
         "conflicting details",
         "missing: manager"
       ],
-      "policy_version": "northstar-policy-2026-10+13652306",
+      "policy_version": "northstar-policy-2026-10+1af024e9",
       "extraction_fp": "32d1a53445ef7558",
       "mode": "live",
       "error": null,
@@ -508,7 +510,7 @@
   ],
   "active": {
     "extraction_fp": "32d1a53445ef7558",
-    "policy_version": "northstar-policy-2026-10+13652306",
+    "policy_version": "northstar-policy-2026-10+1af024e9",
     "settings": {
       "model": "gpt-4.1-mini",
       "temperature": 0.0,
@@ -519,5 +521,5 @@
   },
   "stale_results": 0,
   "note": "All entries await human review; approvals belong to the named human reviewers.",
-  "snapshot_id": "712b325119fe"
+  "snapshot_id": "37e4551ea409"
 }
