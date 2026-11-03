@@ -1,0 +1,1 @@
+nice. now do the two operators running at the same time thing with real parallel processes, since you said the tests only check the claims. add that and commit.

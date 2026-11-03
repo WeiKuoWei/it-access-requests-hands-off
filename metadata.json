@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.10.0",
+  "checkpoint_id": "01M6HCZFSTGZY59F2SQMQJD5AS",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "README.md",
+    "deliverables/verification.md",
+    "intake/cli.py",
+    "intake/pipeline.py",
+    "intake/report.py",
+    "intake/store.py",
+    "tests/fake_provider.py",
+    "tests/launch.py",
+    "tests/test_parallel.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 90,
+    "cache_creation_tokens": 69475,
+    "cache_read_tokens": 10133675,
+    "output_tokens": 53151,
+    "api_call_count": 44
+  }
+}
