@@ -1,9 +1,11 @@
 """Deliverable exports (derived from the store) and the source-grounded accuracy check."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -100,32 +102,81 @@ def build(store: Store, cfg: Config | None = None, mode: str | None = None) -> t
     return records, queue, history
 
 
+LOCK_NAME = ".export.lock"
+
+
 @contextmanager
-def _export_lock(out: Path):
-    """Serialise exports across processes. The snapshot must be taken *inside* the lock, otherwise an operator
-    who read the database earlier can finish writing after another operator and leave older data in place."""
+def _flock(out: Path, exclusive: bool):
+    """Advisory lock shared by writers (exclusive) and consistent readers (shared) of the export directory."""
     out.mkdir(parents=True, exist_ok=True)
-    if fcntl is None:  # Windows: no advisory locks available; exports are still atomic per file
+    if fcntl is None:  # Windows: no advisory locks available; readers fall back to verify-and-retry
         yield
         return
-    with open(out / ".export.lock", "w") as fh:
-        fcntl.flock(fh, fcntl.LOCK_EX)
+    with open(out / LOCK_NAME, "a") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
         try:
             yield
         finally:
             fcntl.flock(fh, fcntl.LOCK_UN)
 
 
+def _export_lock(out: Path):
+    """Serialise exports across processes. The snapshot must be taken *inside* the lock, otherwise an operator
+    who read the database earlier can finish writing after another operator and leave older data in place.
+    Readers that take the shared lock (read_consistent) cannot run while files are being replaced."""
+    return _flock(out, exclusive=True)
+
+
+def snapshot_id(records: list[dict], queue: dict) -> str:
+    """Content-derived id of one export. Identical state -> identical id; any change -> a different id.
+
+    Stamped into queue.json and into every line of extractions.jsonl so a reader can prove the two files it
+    holds come from the same export (generated_at is excluded so an unchanged state keeps its id).
+    """
+    body = {"records": records, "queue": {k: v for k, v in queue.items() if k not in ("generated_at", "snapshot_id")}}
+    return hashlib.sha256(json.dumps(body, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+
+
 def export(store: Store, cfg: Config) -> dict:
     out = Path(cfg.out_dir)
     with _export_lock(out):
         records, queue, history = build(store, cfg)
+        sid = snapshot_id(records, queue)
+        queue["snapshot_id"] = sid
+        for r in records:
+            r["snapshot_id"] = sid
+        # prior versions live apart from the current outputs; queue.json is written last, it completes the export
+        atomic_write(out / "history.jsonl", "".join(json.dumps(h, ensure_ascii=False) + "\n" for h in history))
         atomic_write(out / "extractions.jsonl", "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records))
         atomic_write(out / "queue.json", json.dumps(queue, indent=2, ensure_ascii=False) + "\n")
-        # prior versions live apart from the current outputs
-        atomic_write(out / "history.jsonl", "".join(json.dumps(h, ensure_ascii=False) + "\n" for h in history))
     return {"records": len(records), "queue": len(queue["entries"]), "history": len(history),
-            "pending": len(queue["pending"])}
+            "pending": len(queue["pending"]), "snapshot_id": sid}
+
+
+class InconsistentSnapshot(Exception):
+    """queue.json and extractions.jsonl come from different exports (and did not settle within the retries)."""
+
+
+def read_consistent(out_dir: str | Path, attempts: int = 50, pause_s: float = 0.02) -> tuple[list[dict], dict]:
+    """Read (records, queue) guaranteed to come from one export.
+
+    Two files cannot be replaced in a single atomic operation, so consistency is enforced on the read side in two
+    layers: (1) hold the shared export lock, which excludes any writer for the duration of the read; (2) verify
+    that every record and the queue carry the same snapshot_id, retrying if not (covers platforms without flock
+    and writers that do not follow the protocol). Raises InconsistentSnapshot rather than return a mixed pair.
+    """
+    out = Path(out_dir)
+    last = "no attempt made"
+    for _ in range(max(1, attempts)):
+        with _flock(out, exclusive=False):
+            records = [json.loads(line) for line in (out / "extractions.jsonl").read_text("utf-8").splitlines()]
+            queue = json.loads((out / "queue.json").read_text("utf-8"))
+        ids = {r.get("snapshot_id") for r in records} | {queue.get("snapshot_id")}
+        if len(ids) == 1 and None not in ids:
+            return records, queue
+        last = f"snapshot ids seen: {sorted(map(str, ids))}"
+        time.sleep(pause_s)
+    raise InconsistentSnapshot(f"extractions.jsonl and queue.json never agreed ({last})")
 
 
 # ---------------------------------------------------------------- accuracy

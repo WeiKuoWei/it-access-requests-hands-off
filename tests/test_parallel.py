@@ -16,11 +16,14 @@ from pathlib import Path
 import pytest
 
 from fake_provider import FakeProvider
+from intake import report
 from intake.config import ROOT
 from intake.store import Store
 from test_scale import make_inbox
 
 LAUNCH = Path(__file__).with_name("launch.py")
+EXPORT_LOOP = Path(__file__).with_name("export_loop.py")
+READER_LOOP = Path(__file__).with_name("reader_loop.py")
 
 
 @pytest.fixture
@@ -47,14 +50,15 @@ def world(tmp_path, provider):
 
 
 class Operator:
-    def __init__(self, world, name, args, barrier=None, **env):
+    def __init__(self, world, name, args, barrier=None, script=None, **env):
         e = {k: v for k, v in os.environ.items() if not k.startswith(("INTAKE_", "OPENAI_"))}
         e.update(OPENAI_API_KEY="test-key-not-real", OPENAI_BASE_URL=world.provider.base_url,
                  INTAKE_DB=world.db, INTAKE_OUT_DIR=world.out, INTAKE_WORKERS="4", INTAKE_BACKOFF_S="0")
         e.update({k: str(v) for k, v in env.items()})
         self.name, self.log_path = name, world.dir / f"{name}.log"
         self._log = open(self.log_path, "w")
-        self.proc = subprocess.Popen([sys.executable, str(LAUNCH), barrier or world.barrier, *args], cwd=ROOT, env=e,
+        self.proc = subprocess.Popen([sys.executable, str(script or LAUNCH), barrier or world.barrier, *args],
+                                     cwd=ROOT, env=e,
                                      stdout=self._log, stderr=subprocess.STDOUT)
         world.ops.append(self)
 
@@ -106,6 +110,7 @@ def coherent(world, files, *, done_per_doc: int | None = 1):
         import hashlib
         assert r["source_sha256"] == hashlib.sha256(f.read_bytes()).hexdigest()
         assert r["extraction"] is not None
+    report.read_consistent(out, attempts=1)  # and both files come from one export (same snapshot_id)
     return hist
 
 
@@ -292,3 +297,32 @@ def test_a_slow_exporter_cannot_overwrite_newer_work_with_its_older_snapshot(wor
     all_files = sorted(inbox.glob("*.json"))
     assert len(all_files) == 9
     coherent(world, all_files)  # fails if the slow exporter's 6-document snapshot won
+
+
+def test_readers_never_see_extractions_and_queue_from_different_exports(world):
+    """A writer keeps publishing new exports with a deliberate 25 ms gap between the files it replaces.
+
+    - a naive reader (two plain reads, like `cat a b`) hits the gap and sees a mixed pair: the hazard is real, and
+      the snapshot_id stamped in both files makes every such pair detectable;
+    - a reader using report.read_consistent, with its verify-and-retry layer switched off so that only the shared
+      export lock protects it, never sees a mixed pair.
+    """
+    inbox = world.dir / "bulk"
+    make_inbox(world.dir, 0)
+    done = str(world.dir / "writer_done")
+    writer = Operator(world, "writer", [str(inbox), "40", done], script=EXPORT_LOOP, LAUNCH_WRITE_GAP_MS=25)
+    naive = Operator(world, "naive", [world.out, "naive", done, "60"], script=READER_LOOP)
+    locked = Operator(world, "locked", [world.out, "locked", done, "60"], script=READER_LOOP)
+    time.sleep(1.5)
+    go(world)
+    assert settle([writer, naive, locked]) == [0, 0, 0]
+
+    def result(op):
+        return json.loads(op.log.strip().splitlines()[-1])
+
+    n, l = result(naive), result(locked)
+    assert n["errors"] == 0 and l["errors"] == 0  # replacing files is atomic: nobody ever read a torn file
+    assert n["mismatches"] > 0, "the gap never produced a mixed pair for a naive reader; the test proved nothing"
+    assert l["reads"] > 20 and l["mismatches"] == 0  # lock-protected reads were never mixed
+    final = Operator(world, "check", ["check-export"], barrier=world.barrier)
+    assert final.wait() == 0 and "OK snapshot" in final.log and "40 records" in final.log

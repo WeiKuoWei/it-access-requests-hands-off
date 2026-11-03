@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-03T18:51:09+00:00",
+  "generated_at": "2026-11-03T19:12:08+00:00",
   "documents": 21,
   "counts": {
     "review": 12,
@@ -518,5 +518,6 @@
     }
   },
   "stale_results": 0,
-  "note": "All entries await human review; approvals belong to the named human reviewers."
+  "note": "All entries await human review; approvals belong to the named human reviewers.",
+  "snapshot_id": "712b325119fe"
 }

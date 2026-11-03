@@ -36,6 +36,7 @@ python -m intake refresh [IT-007.json ...]           # bring them up to date (al
 python -m intake retry [IT-007.json ...]             # retry failed/stuck documents (all if none given)
 python -m intake history [IT-007.json]               # every attempt: hash, settings, policy, result
 python -m intake export                              # rewrite deliverables/ from the store
+python -m intake check-export                        # prove extractions.jsonl and queue.json are from the same export
 python -m intake accuracy                            # compare current records with tests/expected.json
 python -m pytest -q                                  # tests (mocked provider, offline)
 python -m intake --mock intake materials/requests    # offline development run (no credentials)
@@ -70,5 +71,6 @@ Exit code of `intake` is 1 if any document ended in `error`.
 - Failure recovery: run `python -m intake status`, then `python -m intake retry`. Documents interrupted mid-call appear as pending and are retried after the lease expires (or immediately with `retry <doc>`).
 - Assumptions and limits (workload, shared operation, interruption) are in `deliverables/verification.md`. Key limit: SQLite supports operators sharing one machine's filesystem (several operator processes at once is tested); operators in separate offices need a shared database service, and `INTAKE_DB` must not be on a network share.
 - Two operators at once is safe: each document is claimed by one operator, finished results are reused rather than repeated, and `retry` skips documents another operator already handled (`already-handled`). A document you see as `skipped-busy` is being worked on by someone else; re-run later if it stays pending past `INTAKE_LEASE_S`. Exports are serialised with a lock file (`<out dir>/.export.lock`), so the last export always reflects all committed work.
+- **Reading the deliverables consistently:** two files cannot be swapped atomically, so `extractions.jsonl` and `queue.json` are stamped with the same `snapshot_id` (every line of the former, the top level of the latter). Use `python -m intake check-export` or `intake.report.read_consistent(out_dir)`; both hold a shared lock so no export can run mid-read and refuse a mixed pair. If you read the files some other way while operators are exporting, compare the `snapshot_id` values (they must be equal) or wrap both reads in `flock -s <out dir>/.export.lock`.
 - Mock output (`--mock`) is plumbing-only and labelled `mode: mock` in each record; live results are `mode: live`.
 - Deliverables: `deliverables/{extractions.jsonl,queue.json,accuracy.md,request-evidence.json,verification.md}`; `history.jsonl` holds earlier versions.

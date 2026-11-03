@@ -155,6 +155,28 @@ def cmd_export(args, cfg, store):
     return 0
 
 
+def cmd_check_export(args, cfg, store):
+    """Read extractions.jsonl and queue.json the way a reviewer's tooling should, and prove they agree."""
+    try:
+        records, queue = report.read_consistent(cfg.out_dir)
+    except FileNotFoundError as e:
+        print(f"no export found in {cfg.out_dir}: {e.filename}. Run: python -m intake export")
+        return 1
+    except report.InconsistentSnapshot as e:
+        print(f"MISMATCH: {e}")
+        return 1
+    by_doc = {r["document_id"]: r for r in records}
+    bad = [e["document_id"] for e in queue["entries"]
+           if e["document_id"] not in by_doc or by_doc[e["document_id"]]["attempt_id"] != e["attempt_id"]
+           or by_doc[e["document_id"]]["source_sha256"] != e["source_sha256"]]
+    if bad or len(by_doc) != len(queue["entries"]):
+        print(f"MISMATCH: queue and records disagree for {bad or 'the document set'}")
+        return 1
+    print(f"OK snapshot {queue['snapshot_id']}: {len(records)} records, {len(queue['entries'])} queue entries, "
+          f"{len(queue['pending'])} pending")
+    return 0
+
+
 def cmd_accuracy(args, cfg, store):
     expected = json.loads((ROOT / "tests" / "expected.json").read_text())
     records, _, _ = report.build(store)
@@ -186,10 +208,11 @@ def main(argv=None) -> int:
     p = sub.add_parser("history", help="all attempts, optionally for one document")
     p.add_argument("document", nargs="?")
     sub.add_parser("export", help="write deliverables/ from the store")
+    sub.add_parser("check-export", help="verify extractions.jsonl and queue.json come from the same export")
     sub.add_parser("accuracy", help="compare current extractions with tests/expected.json")
     args = ap.parse_args(argv)
     cfg = Config()
     store = Store(cfg.db_path)
     return {"intake": cmd_intake, "retry": cmd_retry, "queue": cmd_queue, "status": cmd_status,
-            "refresh": cmd_refresh,
+            "refresh": cmd_refresh, "check-export": cmd_check_export,
             "history": cmd_history, "export": cmd_export, "accuracy": cmd_accuracy}[args.cmd](args, cfg, store)
