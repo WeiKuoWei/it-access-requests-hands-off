@@ -6,7 +6,9 @@ Authorization header back inside its error response, which is the realistic way 
 import io
 import json
 import logging
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -198,22 +200,45 @@ def test_the_evidence_embeds_the_real_prompt_not_a_copy(cfg):
 SECRET_SHAPE = re.compile(r"sk-(?:proj-|live-|test-)?[A-Za-z0-9_\-]{20,}")
 
 
-def _tracked_text_files():
-    skip = {".git", ".venv", "data", "__pycache__", ".pytest_cache"}
+SKIP_DIRS = {".git", ".venv", "__pycache__", ".pytest_cache"}
+
+
+def _tracked_files():
+    """The files git tracks, i.e. what 'committed' means (not ignored local files such as the session capture or the
+    local store). Falls back to every file under the repository when this is not a git checkout."""
+    try:
+        out = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return list(_every_file())
+    return [ROOT / n for n in out.decode().split("\0") if n and (ROOT / n).is_file()]
+
+
+def _every_file():
+    """Every file under the repository, tracked or not (local captures, the SQLite store, scratch output)."""
     for p in ROOT.rglob("*"):
-        if p.is_file() and not (set(p.relative_to(ROOT).parts) & skip) and p.suffix in (
-                ".md", ".json", ".jsonl", ".py", ".txt", ".lock", ".toml", ".cfg", ".yml", ".yaml", ""):
+        if p.is_file() and not (set(p.relative_to(ROOT).parts) & SKIP_DIRS):
             yield p
 
 
 def test_no_secret_shaped_string_is_committed_anywhere_in_the_repository():
-    hits = [str(p.relative_to(ROOT)) for p in _tracked_text_files() if SECRET_SHAPE.search(p.read_text("utf-8", "ignore"))]
+    hits = [str(p.relative_to(ROOT)) for p in _tracked_files()
+            if SECRET_SHAPE.search(p.read_bytes().decode("utf-8", "ignore"))]
     assert hits == []  # including the tests: fake keys are assembled from pieces, see KEY above
 
 
-def test_the_operators_real_key_if_one_is_set_appears_in_no_committed_file_or_deliverable():
-    real = __import__("os").environ.get("OPENAI_API_KEY")
+def test_the_scan_looks_at_tracked_files_not_ignored_local_ones():
+    """Regression: the session capture (gitignored, and full of this very test's made-up keys) once failed the scan."""
+    tracked = {str(p.relative_to(ROOT)) for p in _tracked_files()}
+    assert "README.md" in tracked and "intake/logs.py" in tracked and "deliverables/queue.json" in tracked
+    assert not any(t.startswith(("data/", ".venv/", ".entire/metadata/")) for t in tracked)
+
+
+def test_the_operators_real_key_if_one_is_set_appears_in_no_file_under_the_repository():
+    """Stricter than the scan above on purpose: every file counts, tracked or not (the session capture is submitted
+    through another channel, the local store holds results), binary files included."""
+    real = os.environ.get("OPENAI_API_KEY")
     if not real or len(real) < 12 or real == KEY:
         pytest.skip("no real OPENAI_API_KEY in this environment")
-    hits = [str(p.relative_to(ROOT)) for p in _tracked_text_files() if real in p.read_text("utf-8", "ignore")]
-    assert hits == [], "the real API key was found in a repository file"
+    needle = real.encode()
+    hits = [str(p.relative_to(ROOT)) for p in _every_file() if needle in p.read_bytes()]
+    assert hits == [], "the real API key was found in a file under the repository"
