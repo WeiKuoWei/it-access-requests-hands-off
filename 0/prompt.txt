@@ -1,0 +1,1 @@
+you left IT-202 and IT-205 as model errors. fix those in the prompt and rerun the probe, then commit.
