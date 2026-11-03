@@ -1,0 +1,1 @@
+ok now the policy/model config change part, refreshing results when settings change. make sure it works and is tested, then commit.
