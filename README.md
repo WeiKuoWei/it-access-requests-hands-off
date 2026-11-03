@@ -11,7 +11,7 @@ source .venv/bin/activate                 # every command below assumes the venv
 pip install -r requirements.lock          # the exact versions this was tested with; requirements.txt has the ranges
 export OPENAI_API_KEY=...                 # supplied by the facilitator; keep it in the environment, never in a file or a log
 ```
-Check the install (offline, about a minute, no key needed): `python -m pytest -q` — all tests should pass.
+Check the install (offline, about a minute, no key needed): `python -m pytest -q` — everything should pass; without `OPENAI_API_KEY` set, one test (the scan for your real key in the repository) is reported as skipped.
 
 ### Configuration (environment variables)
 Everything is optional except `OPENAI_API_KEY` for live runs. Run all commands from the repository root.
