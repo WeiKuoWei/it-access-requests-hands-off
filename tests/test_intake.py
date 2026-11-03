@@ -270,3 +270,49 @@ def test_date_ordering_issue_is_not_treated_as_value_conflict(inbox, store, cfg)
     run_one(inbox, store, cfg, client, "IT-014.json")
     e = cur(store, "IT-014.json")["current"]["extraction"]
     assert (e["start_date"], e["end_date"]) == ("2026-11-05", "2026-11-02")
+
+
+# --- interrupted responses and the documented retry command ------------------------------------
+@pytest.mark.parametrize("make", [
+    lambda: completion('{"request_id": "IT-001", "req', finish="length"),          # cut off mid-JSON
+    lambda: completion(record(), finish="incomplete"),                               # non-stop finish reason
+    lambda: completion(None, finish="stop"),                                         # empty body
+    lambda: api_error(openai.APIConnectionError, 0),                                 # connection dropped
+])
+def test_interrupted_response_is_retried_then_recorded_as_error(inbox, store, cfg, make):
+    client = FakeClient(lambda m, n: make())
+    run_one(inbox, store, cfg, client)
+    c = cur(store, "IT-001.json")["current"]
+    assert client.calls == cfg.max_attempts            # retryable, bounded
+    assert c["status"] == "error" and c["extraction"] is None
+    assert "python -m intake retry IT-001.json" in c["error"]["message"]
+
+
+def test_truncated_response_recovers_on_retry(cfg):
+    seq = [completion('{"request_id": "IT', finish="length"), completion(record())]
+    data, meta = extract(FakeClient(lambda m, n: seq[n - 1]), cfg, "msg", sleep=no_sleep)
+    assert meta["attempts"] == 2 and data["request_id"] == "IT-001"
+
+
+def test_retry_command_failure_after_prior_success_keeps_valid_result(inbox, store, cfg, monkeypatch):
+    import argparse
+    from intake import cli
+
+    run_one(inbox, store, cfg, FakeClient(good))
+    good_id = cur(store, "IT-001.json")["current"]["id"]
+    # source changes, the new attempt is interrupted
+    data = json.loads((inbox / "IT-001.json").read_text())
+    data["message"] += " Updated."
+    (inbox / "IT-001.json").write_text(json.dumps(data))
+    run_one(inbox, store, cfg, FakeClient(lambda m, n: completion("{", finish="length")))
+    item = cur(store, "IT-001.json")
+    assert item["current"]["state"] == "error" and item["last_valid"]["id"] == good_id
+    assert item["last_valid"]["source_sha256"] != item["current"]["source_sha256"]  # earlier source version
+    # the documented retry command also fails while the service is still interrupted
+    cfg_out = cfg
+    monkeypatch.setattr(cli, "_client", lambda c, a: (FakeClient(lambda m, n: completion("{", finish="length")), "mock"))
+    cli.cmd_retry(argparse.Namespace(documents=["IT-001.json"]), cfg_out, store)
+    item = cur(store, "IT-001.json")
+    assert item["current"]["state"] == "error" and item["last_valid"]["id"] == good_id
+    _, queue, _ = report.build(store)
+    assert queue["entries"][0]["status"] == "error" and queue["entries"][0]["earlier_result"]["attempt_id"] == good_id

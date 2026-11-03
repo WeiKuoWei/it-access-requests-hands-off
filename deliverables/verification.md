@@ -4,7 +4,7 @@ All automated tests use a **mocked** provider (`FakeClient` in `tests/conftest.p
 
 ## Commands
 ```
-.venv/bin/python -m pytest -q                 # 38 tests, ~1 s, offline
+.venv/bin/python -m pytest -q                 # 44 tests, ~1 s, offline
 .venv/bin/python -m intake accuracy           # live-or-mock field comparison vs tests/expected.json
 .venv/bin/python -m intake --mock intake materials/requests tests/fixtures/IT-101.json   # offline smoke run
 ```
@@ -21,6 +21,8 @@ All automated tests use a **mocked** provider (`FakeClient` in `tests/conftest.p
 | changed source | new hash → new attempt; history holds both hashes in order; one current entry |
 | failed retry after success | forced retry fails (timeout) → current is error with `earlier_result` carrying the older attempt id and hash; recovery run restores review |
 | refusal / truncated / malformed JSON / schema violation / bad date / non-substring quote / content filter | each becomes an `error` record with the expected `error.kind` and null extraction (7 parametrized cases) |
+| interrupted response | cut-off JSON, non-`stop` finish reason, empty body and a dropped connection are each retried up to `max_attempts` calls, then recorded as error with the retry command; a truncated response followed by a good one recovers on attempt 2 |
+| failed retry after success (CLI) | after a good result, a changed source whose attempt is interrupted, then `retry IT-001.json` also interrupted → current stays error, the older valid result (older source hash) remains linked as `earlier_result` |
 | retry rules | 503 then success → 2 attempts; 401 not retried (1 call) |
 | unreadable export | invalid JSON file → error record `bad-export`, no crash |
 | model setting change | different `OPENAI_MODEL` → re-extraction, both settings kept in history |
@@ -35,7 +37,7 @@ All automated tests use a **mocked** provider (`FakeClient` in `tests/conftest.p
 | redaction | `sk-…` tokens removed from log text |
 
 ## Observed results
-- **Mock:** `pytest` → 38 passed (2026-11-04). Offline `--mock` run of 21 documents → 231/231 by construction (plumbing check only).
+- **Mock:** `pytest` → 44 passed (2026-11-04). Offline `--mock` run of 21 documents → 231/231 by construction (plumbing check only).
 - **Live (provider responses, `gpt-4.1-mini`):** see `accuracy.md` — final configuration 231/231 fields, 21/21 routing, one run. Earlier configurations showed 2 factual errors and then 1 omission; both repaired in code and prompt (described there).
 - Rerunning live intake after each prompt edit re-extracted all 21 documents (new settings fingerprint) and kept the earlier results in history (42 retained attempts at the last export), which exercised the refresh path against the real provider.
 

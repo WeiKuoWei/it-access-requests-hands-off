@@ -33,6 +33,8 @@ def api_error(cls, status):
     req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
     if cls is openai.APITimeoutError:
         return cls(req)
+    if cls is openai.APIConnectionError:
+        return cls(request=req)
     return cls("boom", response=httpx.Response(status, request=req), body=None)
 
 
