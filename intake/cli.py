@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -10,6 +12,25 @@ from . import pipeline, report
 from .config import ROOT, Config
 from .extract import make_client
 from .store import Store
+
+
+def _config(mock: bool) -> Config:
+    """Active configuration. `--mock` must never write into the real store or the committed deliverables by
+    accident, so unless INTAKE_DB / INTAKE_OUT_DIR are set explicitly it uses its own area under data/mock/
+    (gitignored). Use `--mock` on every command (intake, queue, accuracy, ...) to look at mock results."""
+    cfg = Config()
+    if not mock:
+        return cfg
+    over = {}
+    if "INTAKE_DB" not in os.environ:
+        over["db_path"] = str(ROOT / "data" / "mock" / "intake.db")
+    if "INTAKE_OUT_DIR" not in os.environ:
+        over["out_dir"] = str(ROOT / "data" / "mock" / "out")
+    if over:
+        cfg = dataclasses.replace(cfg, **over)
+        print(f"mock mode: using {cfg.db_path} and {cfg.out_dir} (real store and deliverables untouched)",
+              file=sys.stderr)
+    return cfg
 
 
 def _files(targets: list[str]) -> list[Path]:
@@ -25,8 +46,6 @@ def _client(cfg: Config, args):
         from .mock import MockClient
 
         return MockClient(), "mock"
-    import os
-
     if not os.environ.get("OPENAI_API_KEY"):
         sys.exit("OPENAI_API_KEY is not set. Export it (or use --mock for offline development).")
     return make_client(cfg), "live"
@@ -72,7 +91,7 @@ def cmd_retry(args, cfg, store):
     res = pipeline.run(paths, store, client, cfg, mode, force=True, expect=expect)
     print("retry:", res)
     print("exported:", report.export(store, cfg))
-    return 0
+    return 1 if "error" in res.values() else 0  # like intake/refresh: non-zero while anything still fails
 
 
 def cmd_queue(args, cfg, store):
@@ -213,7 +232,7 @@ def main(argv=None) -> int:
     p = sub.add_parser("accuracy", help="compare current extractions with tests/expected.json (or --expected FILE)")
     p.add_argument("--expected", help="alternative expected-facts file, e.g. tests/policy_probe_expected.json")
     args = ap.parse_args(argv)
-    cfg = Config()
+    cfg = _config(args.mock)
     store = Store(cfg.db_path)
     return {"intake": cmd_intake, "retry": cmd_retry, "queue": cmd_queue, "status": cmd_status,
             "refresh": cmd_refresh, "check-export": cmd_check_export,
