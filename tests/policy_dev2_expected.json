@@ -1,0 +1,202 @@
+{
+ "IT-281.json": {
+  "fields": {
+   "request_id": "IT-281",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Abe Cole",
+   "team": "Finance",
+   "system": "Ledger",
+   "environment": null,
+   "permission": "read",
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-282.json": {
+  "fields": {
+   "request_id": "IT-282",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Bea Dunn",
+   "team": "Support",
+   "system": "Beacon",
+   "environment": null,
+   "permission": "read",
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-283.json": {
+  "fields": {
+   "request_id": "IT-283",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Cai Ford",
+   "team": "Platform",
+   "system": "Forge",
+   "environment": null,
+   "permission": "read",
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-284.json": {
+  "fields": {
+   "request_id": "IT-284",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Dev Gill",
+   "team": "Data",
+   "system": "Atlas",
+   "environment": "staging",
+   "permission": null,
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-285.json": {
+  "fields": {
+   "request_id": "IT-285",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Eli Hart",
+   "team": "Platform",
+   "system": "Forge",
+   "environment": "staging",
+   "permission": null,
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "IT Service Desk",
+   "status": "needs-information",
+   "next_action": "clarify"
+  }
+ },
+ "IT-286.json": {
+  "fields": {
+   "request_id": "IT-286",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Fay Ito",
+   "team": "Finance",
+   "system": "Ledger",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "owner": "System Owner",
+   "status": "review",
+   "next_action": "review-request"
+  }
+ },
+ "IT-287.json": {
+  "fields": {
+   "request_id": "IT-287",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Gil Moss",
+   "team": "Compliance",
+   "system": "Ledger",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "System Owner",
+   "status": "review",
+   "next_action": "review-request"
+  }
+ },
+ "IT-288.json": {
+  "fields": {
+   "request_id": "IT-288",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Hal Ng",
+   "team": "Platform",
+   "system": "Forge",
+   "environment": "staging",
+   "permission": "write",
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Priya Shah"
+  },
+  "route": {
+   "owner": "Security Review",
+   "status": "review",
+   "next_action": "review-risk-then-owner"
+  }
+ },
+ "IT-289.json": {
+  "fields": {
+   "request_id": "IT-289",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Ida Roy",
+   "team": "Research",
+   "system": "Atlas",
+   "environment": "production",
+   "permission": "read",
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Nia Patel"
+  },
+  "route": {
+   "owner": "Security Review",
+   "status": "review",
+   "next_action": "review-risk-then-owner"
+  }
+ },
+ "IT-290.json": {
+  "fields": {
+   "request_id": "IT-290",
+   "request_date": "2026-12-01",
+   "kind": "new",
+   "requester": "Jon Wu",
+   "team": "Learning",
+   "system": "Beacon",
+   "environment": "staging",
+   "permission": "read",
+   "start_date": "2026-12-14",
+   "end_date": "2026-12-16",
+   "manager": "Elena Park"
+  },
+  "route": {
+   "owner": "System Owner",
+   "status": "review",
+   "next_action": "review-request"
+  }
+ }
+}

@@ -278,6 +278,42 @@ class TestCorrections:
         assert any(i.startswith("correction-ignored: environment") and "'production'" in i
                    for i in bad["extraction"]["issues"])
 
+    def test_a_model_that_applies_the_new_start_but_drops_the_corrected_end_is_flagged(self, tmp_path, store, cfg):
+        # seen live: IT-015 came back with end_date null and "range: end_date 2026-10-31 is not a valid date"
+        c = process(tmp_path, store, cfg, "IT-015.json", start_date="2026-10-29", end_date=None,
+                    issues=["range: end_date 2026-10-31 is not a valid date"], **BASE015)
+        e = c["extraction"]
+        assert (e["start_date"], e["end_date"]) == ("2026-10-29", None)  # not rewritten
+        assert any(i.startswith("correction-ignored: the correction names 2026-10-31 but end_date is null")
+                   for i in e["issues"])
+        assert routed(c) == (DESK, "needs-information", "clarify")  # also by the missing end_date, but now explained
+
+    def test_dropping_both_corrected_dates_is_flagged(self):
+        e = finalize(record(start_date=None, end_date=None), IT015, "IT-015.json")
+        assert any("2026-10-29, 2026-10-31 but start_date and end_date is null" in i for i in e["issues"])
+
+    def test_a_dropped_correction_date_is_not_flagged_when_the_model_recorded_a_date_conflict(self):
+        e = finalize(record(start_date="2026-10-29", end_date=None,
+                            issues=["conflict: end_date 2026-10-26 vs 2026-10-31"]), IT015, "IT-015.json")
+        assert not any(i.startswith("correction-ignored") for i in e["issues"])
+
+    def test_a_correction_of_one_date_with_both_dates_filled_is_not_flagged(self):
+        msg = "Access 2026-10-23 to 2026-10-30. (Correction: the end date is 2026-11-02.)"
+        e = finalize(record(start_date="2026-10-23", end_date="2026-11-02"), msg, "IT-001.json")
+        assert not any(i.startswith("correction-ignored") for i in e["issues"])
+
+    def test_a_correction_that_also_names_the_superseded_date_is_not_flagged_when_applied_correctly(self):
+        # "end is X, not Y" mentions Y too; a correct extraction (end = X, nothing null) must not be flagged for Y
+        msg = "Access 2026-10-23 to 2026-10-30. (Correction: the end date is 2026-11-02, not 2026-10-30.)"
+        e = finalize(record(start_date="2026-10-23", end_date="2026-11-02"), msg, "IT-001.json")
+        assert not any(i.startswith("correction-ignored") for i in e["issues"])
+
+    def test_a_correction_to_relative_dates_names_no_iso_date_so_nothing_is_flagged(self):
+        msg = "Access 2026-10-23 to 2026-10-30. (Correction: the dates are now next Monday to Friday.)"
+        e = finalize(record(start_date=None, end_date=None, issues=["relative-date: start_date and end_date"]),
+                     msg, "IT-001.json")
+        assert not any(i.startswith("correction-ignored") for i in e["issues"])
+
     def test_a_correction_to_the_permission(self, tmp_path, store, cfg):
         msg = ("IT-204, 2026-10-23. Priya Nair, Data. New read access to Atlas in staging from 2026-10-27 to "
                "2026-10-30. Manager is Nia Patel. Correction: the permission should be write, not read, because I "
@@ -402,7 +438,7 @@ class TestUnexplainedNulls:
 # ================================================================================ hedged alternative dates
 FIX = Path(__file__).parent / "fixtures"
 GOLD = {name: json.loads((Path(__file__).parent / f"{name}_expected.json").read_text())
-        for name in ("policy_probe", "policy_holdout", "policy_dev")}
+        for name in ("policy_probe", "policy_holdout", "policy_dev", "policy_dev2")}
 
 
 def fixture_message(set_name, doc):
@@ -438,7 +474,7 @@ class TestHedgedDates:
         assert (e["start_date"], e["end_date"]) == (kept["start_date"], kept["end_date"])  # never rewritten
         assert len(hedged(e)) == 1
         assert routed(c) == (DESK, "needs-information", "clarify")
-        assert "a hedged alternative date is floated in the message but not resolved" in c["reasons"]
+        assert "a hedged alternative value is floated in the message but not resolved" in c["reasons"]
 
     def test_the_issue_names_the_floated_date_and_quotes_the_sentence(self):
         e = finalize(gold_extraction("policy_dev", "IT-251.json") | {"end_date": "2026-12-03"},
@@ -486,12 +522,12 @@ class TestHedgedDates:
     def test_routing_treats_a_hedged_alternative_as_needing_clarification(self):
         r = route(record(issues=["hedged-alternative: something"]), "m", "IT-001.json")
         assert (r["owner"], r["status"], r["next_action"]) == (DESK, "needs-information", "clarify")
-        assert r["reasons"] == ["a hedged alternative date is floated in the message but not resolved"]
+        assert r["reasons"] == ["a hedged alternative value is floated in the message but not resolved"]
 
     def test_precision_and_recall_on_every_message_we_have_with_correct_gold_extractions(self):
         """Gold extractions (end/start null where the message hedges) must flag exactly the hedged-date messages."""
         flagged = {}
-        for name in ("policy_probe", "policy_holdout", "policy_dev"):
+        for name in ("policy_probe", "policy_holdout", "policy_dev", "policy_dev2"):
             for doc in GOLD[name]:
                 e = finalize(gold_extraction(name, doc), fixture_message(name, doc), doc)
                 if hedged(e):
@@ -507,9 +543,152 @@ class TestHedgedDates:
                            "policy_dev": ["IT-251.json", "IT-252.json", "IT-253.json", "IT-254.json", "IT-255.json"]}
 
 
+# ===================================================================== hedged environment / permission
+from intake.finalize import _floated_words  # noqa: E402
+
+
+def dev2(doc, **over):
+    """Dev-set-2 message `doc`, with the extraction a model that KEPT the stated values would return."""
+    stated = {"environment": "staging", "permission": "read", **over}
+    fields = {**GOLD["policy_dev2"][doc]["fields"]}
+    for k, v in stated.items():
+        if fields[k] is None:
+            fields[k] = v
+    return finalize(record(**{**fields, "business_purpose": "x"}), fixture_message("policy_dev2", doc), doc)
+
+
+class TestHedgedEnvironmentAndPermission:
+    """The dangerous case: 'Perhaps production is the better fit' next to 'in staging'. A model that keeps staging has
+    guessed, and the request would be routed to System Owner instead of being clarified. Flag, never rewrite."""
+
+    @pytest.mark.parametrize("doc,field,word", [
+        ("IT-281.json", "environment", "production"),   # "I'm not sure whether staging is enough, production may be needed."
+        ("IT-282.json", "environment", "production"),   # "Thinking about production instead, still undecided."
+        ("IT-283.json", "environment", "production"),   # "Perhaps production is the better fit."
+        ("IT-284.json", "permission", "write"),         # "Maybe write? Haven't decided."
+    ])
+    def test_a_model_that_keeps_the_stated_value_is_flagged_and_sent_to_clarify(self, tmp_path, store, cfg, doc, field,
+                                                                                word):
+        stated = {"environment": "staging", "permission": "read"}
+        fields = {**GOLD["policy_dev2"][doc]["fields"]}
+        for k, v in stated.items():
+            fields[k] = fields[k] or v
+        c = process(tmp_path, store, cfg, doc, fixture_message("policy_dev2", doc), **fields)
+        e = c["extraction"]
+        assert e[field] == stated[field]  # never rewritten
+        flags = hedged(e)
+        assert len(flags) == 1 and f"floats {field} {word}" in flags[0] and f"{field}={stated[field]}" in flags[0]
+        assert routed(c) == (DESK, "needs-information", "clarify")
+        assert "a hedged alternative value is floated in the message but not resolved" in c["reasons"]
+
+    def test_it285_a_write_request_with_a_floated_admin_is_clarified_not_sent_to_security_review_as_is(self, tmp_path,
+                                                                                                    store, cfg):
+        fields = {**GOLD["policy_dev2"]["IT-285.json"]["fields"], "permission": "write"}
+        c = process(tmp_path, store, cfg, "IT-285.json", fixture_message("policy_dev2", "IT-285.json"), **fields)
+        assert routed(c) == (DESK, "needs-information", "clarify") and "floats permission admin" in hedged(c["extraction"])[0]
+
+    def test_without_the_backstop_the_environment_guess_goes_to_the_wrong_reviewer(self):
+        e = record(environment="staging", permission="read")
+        assert route(e, "m", "IT-001.json")["owner"] == "System Owner"  # what the unflagged guess would do
+        finalize(e, "New access in staging. Perhaps production is the better fit.", "IT-001.json")
+        assert route(e, "m", "IT-001.json")["next_action"] == "clarify"
+
+    @pytest.mark.parametrize("doc", ["IT-286.json", "IT-287.json", "IT-288.json", "IT-289.json", "IT-290.json"])
+    def test_controls_look_alikes_are_left_alone(self, doc):
+        # negated alternative / "only <stated value>" / read as a verb / the stated value restated / no alternative
+        over = {"IT-288.json": {"permission": "write"}, "IT-289.json": {"environment": "production"}}.get(doc, {})
+        assert hedged(dev2(doc, **over)) == []
+
+    def test_a_model_that_already_recorded_a_conflict_about_the_field_is_not_flagged_again(self):
+        # the value is still present (so the null rule cannot be what skips it): only the recorded conflict does
+        e = record(environment="staging", issues=["conflict: environment staging vs production"])
+        finalize(e, "New access in staging. Perhaps production is the better fit.", "IT-001.json")
+        assert hedged(e) == []
+        other = record(environment="staging", issues=["conflict: permission read vs write"])  # a different field
+        finalize(other, "New access in staging. Perhaps production is the better fit.", "IT-001.json")
+        assert len(hedged(other)) == 1
+
+    def test_an_environment_already_null_for_any_reason_is_not_flagged(self):
+        e = finalize(record(environment=None), "Staging. Perhaps production is the better fit.", "IT-001.json")
+        assert hedged(e) == []  # already unresolved; the null is explained by a `missing:` issue instead
+
+    def test_one_issue_per_kind_so_environment_permission_and_dates_can_all_be_reported(self):
+        msg = ("Access to Atlas in staging, 2026-10-23 to 2026-11-06. Maybe production instead. "
+               "Perhaps write instead, perhaps until 2026-11-20.")
+        e = finalize(record(environment="staging", permission="read"), msg, "IT-001.json")
+        kinds = sorted(i.split("floats ")[1].split(" ")[0] for i in hedged(e))
+        assert kinds == ["2026-11-20", "environment", "permission"]
+        finalize(e, msg, "IT-001.json")
+        assert len(hedged(e)) == 3  # idempotent
+
+    def test_several_hedged_sentences_about_one_field_give_one_issue(self):
+        e = finalize(record(environment="staging"), "In staging. Maybe production. Perhaps production after all.",
+                     "IT-001.json")
+        assert len([i for i in hedged(e) if "floats environment" in i]) == 1
+
+    @pytest.mark.parametrize("cue", ["Wondering whether", "Probably", "Thinking about", "Undecided, but", "I guess",
+                                     "It depends, maybe", "Considering"])
+    def test_cue_variants(self, cue):
+        e = finalize(record(), f"Read access in staging. {cue} production instead.", "IT-001.json")
+        assert any("floats environment production" in i for i in hedged(e)), cue
+
+    def test_no_cue_no_flag(self):
+        msg = "Read access in staging. Production is owned by another team. Admin approves it."
+        assert hedged(finalize(record(), msg, "IT-001.json")) == []
+
+    def test_a_hedge_inside_a_labelled_correction_is_left_to_the_correction_check(self):
+        msg = "Access in staging. (Correction: perhaps the environment is production.)"
+        e = finalize(record(environment="staging"), msg, "IT-001.json")
+        assert hedged(e) == [] and any(i.startswith("correction-ignored: environment") for i in e["issues"])
+
+    @pytest.mark.parametrize("sentence,field,current,expected", [
+        # real alternatives
+        ("Maybe write instead.", "permission", "read", ["write"]),
+        ("Maybe write?", "permission", "read", ["write"]),                       # the bare answer, no context words
+        ("I wonder if I need write access.", "permission", "read", ["write"]),
+        ("Perhaps admin.", "permission", "write", ["admin"]),                    # admin is never a verb
+        ("Maybe read-only would be enough.", "permission", "write", ["read"]),
+        ("Could be admin rather than write.", "permission", "write", ["admin"]),
+        ("Maybe staging instead of production.", "environment", "production", ["staging"]),
+        ("Perhaps production, or maybe not.", "environment", "staging", ["production"]),
+        ("Maybe read instead of write.", "permission", "write", ["read"]),       # 'instead of' negates the STATED value
+        # look-alikes that must not count
+        ("I might only need read, not write.", "permission", "read", []),        # negated
+        ("I do not need write, maybe.", "permission", "read", []),               # negated across a few words
+        ("It might be slow in production but I only need staging.", "environment", "staging", []),   # restriction
+        ("I just need staging, perhaps production is slower.", "environment", "staging", []),        # restriction
+        ("I might read a few files first.", "permission", "write", []),          # read is a verb here
+        ("I may need to read the audit notes.", "permission", "write", []),
+        ("I might write a few notes.", "permission", "read", []),                # write is a verb here
+        ("I might need staging access.", "environment", "staging", []),          # restates the stated value
+        ("It might take longer.", "environment", "staging", []),                 # no concrete alternative
+    ])
+    def test_floated_words(self, sentence, field, current, expected):
+        assert _floated_words(sentence, field, current) == expected
+
+    def test_recall_and_precision_on_all_held_messages(self):
+        """A model that keeps the stated value is flagged on exactly the hedged env/permission messages."""
+        flagged = []
+        for doc in GOLD["policy_dev2"]:
+            kept = {"IT-285.json": {"permission": "write"}, "IT-288.json": {"permission": "write"},
+                    "IT-289.json": {"environment": "production"}}.get(doc, {})
+            e = dev2(doc, **kept)
+            if any("floats environment" in i or "floats permission" in i for i in hedged(e)):
+                flagged.append(doc)
+        assert flagged == ["IT-281.json", "IT-282.json", "IT-283.json", "IT-284.json", "IT-285.json"]
+        # and never on the supplied messages, whatever values a model keeps
+        for doc in EXPECTED:
+            path = REQUESTS / doc
+            if path.exists():
+                e = finalize(record(**{**EXPECTED[doc]["fields"], "environment": EXPECTED[doc]["fields"]["environment"] or "staging",
+                                       "permission": EXPECTED[doc]["fields"]["permission"] or "read", "business_purpose": "x"}),
+                             json.loads(path.read_text())["message"], doc)
+                assert not [i for i in hedged(e) if "floats environment" in i or "floats permission" in i], doc
+
+
 # ================================================================================= live-check fixtures stay honest
 @pytest.mark.parametrize("name,count", [("policy_probe", 11), ("policy_holdout", 8), ("policy_dev", 9),
-                                        ("policy_holdout2", 10)])
+                                        ("policy_dev2", 10), ("policy_holdout2", 10), ("policy_holdout3", 10)])
 def test_live_check_expectations_are_grounded_in_their_messages(name, count):
     """tests/fixtures/<name>/* + tests/<name>_expected.json are fresh-wording sets for the live check
     (python -m intake intake tests/fixtures/<name>; python -m intake accuracy --expected ...). Every expected
@@ -561,6 +740,8 @@ def test_a_policy_change_re_applies_the_checks_to_stored_extractions_without_cal
     "Hedged or tentative alternatives count too",   # a hedge still contradicts the stated value (live sampling)
     "check EVERY field you filled",                 # ...for every field, not just the environment
     "A hedge that names NO different concrete value",  # ...but a hedge naming no alternative changes nothing
+    "Apply it fully: the superseded value is simply discarded",  # a correction is never nulled (IT-015 regression)
+    "A labelled correction is never a hedged alternative",
     'ONLY for date fields',               # relative-date is a date tag, not a catch-all
 ])
 def test_the_extraction_prompt_keeps_the_rules_found_by_live_probing(needle):

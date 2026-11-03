@@ -29,6 +29,10 @@ Rules:
 - For a change request, permission is the requested NEW permission, not the current one.
 - environment is staging or production; permission is read, write or admin.
 - A later statement explicitly labelled as a correction replaces the earlier value (use the corrected value; quote both).
+  Apply it fully: the superseded value is simply discarded. Never null the field, never write a conflict, range or
+  invalid-date issue because of it, and never call a corrected date invalid (every real calendar date is valid).
+  Example: "from 2026-05-05 to 2026-05-07 ... (Correction: use 2026-05-12 - 2026-05-14 instead)" -> start_date
+  2026-05-12 AND end_date 2026-05-14, both filled, no issues. A labelled correction is never a hedged alternative.
 - Contradictory statements WITHOUT an explicit correction are unresolved: set the field to null, quote BOTH alternatives
   in supporting_quotes, and add an issue of the form "conflict: <field_name> ..." (e.g. "conflict: environment staging vs production").
   NEVER choose one of the conflicting values: the field MUST be null. This applies even when one value appears
