@@ -1,0 +1,1 @@
+you mentioned extractions.jsonl can be one version ahead of queue.json mid-export. make the export write both consistently so a reader never sees a mismatch, then commit.
