@@ -400,14 +400,15 @@ class TestUnexplainedNulls:
 
 
 # ================================================================================= live-check fixtures stay honest
-def test_policy_probe_expectations_are_grounded_in_their_messages():
-    """tests/fixtures/policy_probe/* + tests/policy_probe_expected.json are the fresh-wording set for the live check
-    (python -m intake intake tests/fixtures/policy_probe; python -m intake accuracy --expected ...). Every expected
+@pytest.mark.parametrize("name,count", [("policy_probe", 11), ("policy_holdout", 8)])
+def test_live_check_expectations_are_grounded_in_their_messages(name, count):
+    """tests/fixtures/<name>/* + tests/<name>_expected.json are fresh-wording sets for the live check
+    (python -m intake intake tests/fixtures/<name>; python -m intake accuracy --expected ...). Every expected
     value must literally appear in its message, so the expectations come from the source and not from any output."""
-    probe = Path(__file__).parent / "fixtures" / "policy_probe"
-    expected = json.loads((Path(__file__).parent / "policy_probe_expected.json").read_text())
+    probe = Path(__file__).parent / "fixtures" / name
+    expected = json.loads((Path(__file__).parent / f"{name}_expected.json").read_text())
     files = sorted(p.name for p in probe.glob("*.json"))
-    assert files == sorted(expected) and len(files) == 11
+    assert files == sorted(expected) and len(files) == count
     for name in files:
         message = json.loads((probe / name).read_text())["message"]
         fields = expected[name]["fields"]
@@ -442,6 +443,22 @@ def test_a_policy_change_re_applies_the_checks_to_stored_extractions_without_cal
     first = store.history("IT-016.json")[0]  # the earlier version is retained exactly as it was
     assert not any(i.startswith("mismatch") for i in first["extraction"]["issues"])
     assert first["policy_version"] == "policy-before-checks"
+
+
+@pytest.mark.parametrize("needle", [
+    "Jo Smith, Billing:",                 # compact "Name, Team" introductions give requester AND team
+    "never leave\n  team null",
+    'without an article ("the")',         # system/team are bare names
+    "A hedged or tentative alternative",  # a hedge still contradicts the stated value (found by live sampling)
+    'Only the word "correction" resolves a conflict',
+    'ONLY for date fields',               # relative-date is a date tag, not a catch-all
+])
+def test_the_extraction_prompt_keeps_the_rules_found_by_live_probing(needle):
+    """Guard against an edit silently dropping a rule that live sampling showed the model needs. (This checks the
+    prompt text only; whether the model obeys it is what the live probe and held-out set measure.)"""
+    from intake.extract import SYSTEM_PROMPT
+
+    assert needle in SYSTEM_PROMPT
 
 
 def test_the_finalize_module_is_part_of_the_policy_version(tmp_path, monkeypatch):
