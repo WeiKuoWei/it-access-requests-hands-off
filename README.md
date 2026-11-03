@@ -1,23 +1,54 @@
-# AI Full Stack Challenge — IT Access Requests
+# IT Access Requests — intake and review queue
 
-## The task
-Northstar Labs receives access requests as free-text messages. Build a small runnable application that uses a language model to turn those messages into structured records and a review queue for the IT team. The supplied company, people and requests are fictional.
+Turns free-text access requests (JSON exports) into schema-conforming records and a review queue for the IT team, using the OpenAI Chat Completions API. Requirements: `docs/requirements.md`; policy: `materials/office-policy.md`.
 
-Read docs/requirements.md for the operating context and required behavior, materials/office-policy.md for review rules, and snapshot.schema.json for the record format. The 20 JSON exports in materials/requests/ are your starting data. Choose an interface suited to the IT team: a CLI, service or web application. Operators should be able to start intake, inspect completed results while other requests are pending, and resume unfinished work through the documented interface.
+## Setup
+Supported runtime: Python 3.14 (3.11+ expected to work), provider: OpenAI.
+```
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.lock        # exact versions; requirements.txt has the ranges
+export OPENAI_API_KEY=...                          # supplied by the facilitator; never committed or logged
+```
+| Variable | Default | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | – (required for live) | credential, redacted from logs |
+| `OPENAI_MODEL` | `gpt-4.1-mini` | model ID (supported configuration) |
+| `OPENAI_BASE_URL` | OpenAI | optional gateway/proxy |
+| `INTAKE_TEMPERATURE` | `0` | |
+| `INTAKE_MAX_OUTPUT_TOKENS` | `1500` | |
+| `INTAKE_TIMEOUT_S` | `60` | per request |
+| `INTAKE_MAX_ATTEMPTS` | `4` | per document, retryable failures only |
+| `INTAKE_BACKOFF_S` | `2` | exponential base, with jitter |
+| `INTAKE_WORKERS` | `4` | concurrent documents (rate-limit control) |
+| `INTAKE_LEASE_S` | `600` | when an in-progress claim is considered abandoned |
+| `INTAKE_DB` | `data/intake.db` | SQLite store (all attempts and history) |
+| `INTAKE_OUT_DIR` | `deliverables/` | exported files |
 
-## What to submit
-| Path | Content |
-|---|---|
-| README.md | Setup, supported runtime/provider, exact intake/test/accuracy-check commands, environment-variable names, and how to inspect the queue |
-| Source code and dependency lockfile | Runnable application, extraction prompt, schema and model request configuration |
-| deliverables/extractions.jsonl | One current record per message: document_id, source_sha256, extraction (schema-conforming object, or null on error), status, owner, next_action, and error (null on success) |
-| deliverables/queue.json | The review queue linked to extraction records by document_id |
-| deliverables/accuracy.md | Source-derived expected fields for the 20 supplied messages and one paraphrase you author; the field-comparison procedure, exact-match counting/denominator rules, factual-error reporting and model/configuration; distinguish mocked examples from any optional live observations |
-| deliverables/request-evidence.json | Credential-redacted example model request showing the model ID and configuration used, plus the implemented response handling |
-| deliverables/verification.md | Verification commands and assertions, their intended comparisons, operating limits, and any observed results or repairs clearly identified as such |
-| Coding-session capture | Session record paired with the submitted commit, collected through the facilitator's capture setup |
+## Commands
+```
+python -m intake intake materials/requests          # process a directory or files; exports on completion
+python -m intake queue [--status needs-information] [--json]   # inspect while intake runs elsewhere
+python -m intake status                              # counts, pending, failed documents, active settings
+python -m intake retry [IT-007.json ...]             # retry failed/stuck documents (all if none given)
+python -m intake history [IT-007.json]               # every attempt: hash, settings, policy, result
+python -m intake export                              # rewrite deliverables/ from the store
+python -m intake accuracy                            # compare current records with tests/expected.json
+python -m pytest -q                                  # tests (mocked provider, offline)
+python -m intake --mock intake materials/requests    # offline development run (no credentials)
+```
+Exit code of `intake` is 1 if any document ended in `error`.
 
-## Submission
-Commit and push the application, outputs and session capture. Submit the repository URL and exact commit through the Classroom assignment. The facilitator supplies the assignment and capture instructions.
+## Inspecting the queue
+`queue` prints one row per document ordered review → needs-information → error, then documents still pending. Each row has status, owner, next action and the reasons (or error). `deliverables/queue.json` has the same data plus pending claims and links to `extractions.jsonl` by `document_id` and `source_sha256`. Failed documents show their error, the retry command, and (if any) the earlier valid result labelled with its own attempt id and source hash. Earlier attempts live in `history.jsonl` / `python -m intake history`, never in the current outputs.
 
-Submit the implemented provider integration and source-grounded validation procedure. Use mocked responses for reproducible development examples, and label each recorded observation with its configuration and whether it used a mock or provider response.
+## How it works
+- `intake/extract.py` — prompt, request config, response validation (refusal, finish reason, JSON, schema, ISO dates, exact-substring quotes), bounded retries.
+- `intake/routing.py` — deterministic policy rules applied in order (override → withdrawal → needs-information → Security Review → System Owner). The model never decides routing; message text is data.
+- `intake/store.py` — append-only SQLite attempts; "current" is derived. `intake/pipeline.py` — per-document reuse / claim / extract / route.
+- Reuse: unchanged source hash + model settings + policy version → no model call. Changed source or settings → new attempt, old one retained. Changed policy only → re-route stored extraction, no model call. Change `POLICY_VERSION` in `intake/config.py` when the policy changes.
+
+## Handover notes
+- Failure recovery: run `python -m intake status`, then `python -m intake retry`. Documents interrupted mid-call appear as pending and are retried after the lease expires (or immediately with `retry <doc>`).
+- Assumptions and limits (workload, shared operation, interruption) are in `deliverables/verification.md`. Key limit: SQLite supports operators sharing one host/filesystem; separate offices need a shared database service.
+- Mock output (`--mock`) is plumbing-only and labelled `mode: mock` in each record; live results are `mode: live`.
+- Deliverables: `deliverables/{extractions.jsonl,queue.json,accuracy.md,request-evidence.json,verification.md}`; `history.jsonl` holds earlier versions.
