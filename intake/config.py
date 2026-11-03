@@ -10,8 +10,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "snapshot.schema.json"
 
-# Bump when office-policy.md routing rules change in a way that affects routing.
-POLICY_VERSION = "northstar-policy-2026-10-v1"
+POLICY_PATH = ROOT / "materials" / "office-policy.md"
+ROUTING_PATH = ROOT / "intake" / "routing.py"
+
+
+def _policy_version() -> str:
+    """Human label + content hash of the policy text and the routing rules that implement it.
+
+    Editing office-policy.md or routing.py changes this automatically, so affected results are refreshed
+    without anyone having to remember to bump a number. Set INTAKE_POLICY_LABEL to name a release
+    (e.g. "2026-11-rev2"); the hash is always appended so the label alone can never hide a change.
+    """
+    label = os.environ.get("INTAKE_POLICY_LABEL", "northstar-policy-2026-10")
+    h = hashlib.sha256()
+    for p in (POLICY_PATH, ROUTING_PATH):
+        h.update(p.read_bytes())
+    return f"{label}+{h.hexdigest()[:8]}"
+
+
+POLICY_VERSION = _policy_version()
 
 
 def load_schema() -> dict:

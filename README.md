@@ -30,7 +30,9 @@ export OPENAI_API_KEY=...                          # supplied by the facilitator
 ```
 python -m intake intake materials/requests          # process a directory or files; exports on completion
 python -m intake queue [--status needs-information] [--json]   # inspect while intake runs elsewhere
-python -m intake status                              # counts, pending, failed documents, active settings
+python -m intake status                              # counts, pending, failed, stale results, active settings
+python -m intake refresh --dry-run                   # list results made under older settings/policy, and why
+python -m intake refresh [IT-007.json ...]           # bring them up to date (all stale if none named)
 python -m intake retry [IT-007.json ...]             # retry failed/stuck documents (all if none given)
 python -m intake history [IT-007.json]               # every attempt: hash, settings, policy, result
 python -m intake export                              # rewrite deliverables/ from the store
@@ -47,7 +49,16 @@ Exit code of `intake` is 1 if any document ended in `error`.
 - `intake/extract.py` — prompt, request config, response validation (refusal, finish reason, JSON, schema, ISO dates, exact-substring quotes), bounded retries.
 - `intake/routing.py` — deterministic policy rules applied in order (override → withdrawal → needs-information → Security Review → System Owner). The model never decides routing; message text is data.
 - `intake/store.py` — append-only SQLite attempts; "current" is derived. `intake/pipeline.py` — per-document reuse / claim / extract / route.
-- Reuse: unchanged source hash + model settings + policy version → no model call. Changed source or settings → new attempt, old one retained. Changed policy only → re-route stored extraction, no model call. Change `POLICY_VERSION` in `intake/config.py` when the policy changes.
+- Reuse: unchanged source hash + model settings + policy version + provider mode (live/mock) → no model call. Changed source or settings → new attempt, old one retained. Changed policy only → re-route stored extraction, no model call.
+
+## Changing the model configuration or the policy
+- **Settings that invalidate results** (they are part of the settings fingerprint and are stored with every record): `OPENAI_MODEL`, `INTAKE_TEMPERATURE`, `INTAKE_MAX_OUTPUT_TOKENS`, the extraction prompt and `snapshot.schema.json`. Operational settings (workers, timeout, retries, backoff, lease, throttle, breaker, paths) do not invalidate anything.
+- **Policy version** is derived automatically: `INTAKE_POLICY_LABEL` (default `northstar-policy-2026-10`) plus a hash of `materials/office-policy.md` and `intake/routing.py`. Edit either file and every result routed under the old text becomes stale; no number to bump. Set a new label for a named release (e.g. `INTAKE_POLICY_LABEL=2026-11-rev2`); the hash is always appended.
+- **Workflow:** change the setting or policy → `python -m intake queue` / `status` now flag affected results as `[STALE: settings|policy]` → `python -m intake refresh --dry-run` shows each document, whether it needs a model call (`re-extract`) or only a re-route, and the exact change (e.g. `model: gpt-4.1-mini -> …`) → `python -m intake refresh`. A policy-only refresh makes no model calls and needs no credentials. `refresh` is idempotent and resumable: after an interruption, run it again and only unfinished documents are processed.
+- Stale results stay in the queue until refreshed (they are still the latest result). Every refresh adds a new attempt; the earlier result remains in `history` with its own settings, policy version and source hash. Rolling a setting back reuses the earlier result with no model call.
+- If a refresh attempt fails, the document shows as an error with its retry command and the earlier result is labelled with the settings that produced it (`earlier_result`). Use `retry` for failures, `refresh` for stale results.
+- `queue.json` has an `active` block (settings, fingerprint, policy version) and `stale_results`; every record in `extractions.jsonl` carries the `settings`, `extraction_fp`, `policy_version` and `mode` that produced it. `python -m intake history <doc>` lists every version with its settings.
+- Mock and live results are never mixed: a mock result is not reused by a live run (and `refresh` in live mode flags mock results as stale).
 
 ## Large intakes, rate limits and outages
 - Reviewers can run `queue` at any time during an intake; finished documents appear as soon as each completes, and in-flight ones are listed as pending. A slow or hung message holds one worker for at most its timeout and retries, not the whole run.

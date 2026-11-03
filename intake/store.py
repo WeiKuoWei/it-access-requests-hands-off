@@ -135,10 +135,17 @@ class Store:
             return cur.lastrowid
 
     # ---- reading -------------------------------------------------------
-    def find_done(self, document_id, sha, fp, policy=None) -> dict | None:
+    def find_done(self, document_id, sha, fp, policy=None, mode=None) -> dict | None:
+        """Latest finished result for this exact source + extraction settings (+ policy, + provider mode).
+
+        `mode` keeps mock results from being reused as if they were live provider output, and vice versa.
+        """
         q = ("SELECT * FROM attempts WHERE document_id=? AND source_sha256=? AND extraction_fp=? "
              "AND state='done'")
         args = [document_id, sha, fp]
+        if mode:
+            q += " AND mode=?"
+            args.append(mode)
         if policy:
             q += " AND policy_version=?"
             args.append(policy)

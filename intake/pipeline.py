@@ -39,13 +39,13 @@ def process_file(path: Path, store: Store, client, cfg: Config, mode: str = "liv
     sha = hashlib.sha256(raw).hexdigest()
 
     if not force:
-        same = store.find_done(document_id, sha, fp, policy)
+        same = store.find_done(document_id, sha, fp, policy, mode)
         if same:
             if store.latest_finished_id(document_id) == same["id"]:
                 return document_id, "reused"  # nothing to do; current entry already this result
             store.add_derived(same, policy=policy, route=_stored_route(same), mode=same["mode"])
             return document_id, "reused"
-        prior = store.find_done(document_id, sha, fp)  # same source+extraction settings, older policy
+        prior = store.find_done(document_id, sha, fp, mode=mode)  # same source+extraction settings, older policy
         if prior:
             try:
                 msg = _message(raw)
@@ -83,6 +83,42 @@ def process_file(path: Path, store: Store, client, cfg: Config, mode: str = "liv
         store.finish(attempt, state="error", route=error_route(),
                      error=_error("internal", f"Unexpected error: {type(e).__name__}", document_id))
     return document_id, "error"
+
+
+def staleness(attempt: dict | None, cfg: Config, mode: str | None = None) -> dict | None:
+    """Why a finished result no longer matches the active configuration, or None if it is current.
+
+    reasons: 'settings' (model/prompt/schema/limits changed -> needs a new model call),
+             'policy'   (policy text or routing rules changed -> re-route stored extraction, no model call),
+             'mode'     (produced by mock but a live run is requested, or the reverse -> new model call).
+    """
+    if not attempt or attempt["state"] != "done":
+        return None
+    reasons, changes = [], []
+    if attempt["extraction_fp"] != cfg.extraction_fp():
+        reasons.append("settings")
+        old, new = attempt["settings"], cfg.settings()
+        changes = [f"{k}: {old.get(k)} -> {new[k]}" for k in new if old.get(k) != new[k]]
+    if mode and attempt["mode"] != mode:
+        reasons.append("mode")
+        changes.append(f"mode: {attempt['mode']} -> {mode}")
+    if attempt["policy_version"] != cfg.policy_version:
+        reasons.append("policy")
+        changes.append(f"policy: {attempt['policy_version']} -> {cfg.policy_version}")
+    if not reasons:
+        return None
+    action = "re-extract" if ("settings" in reasons or "mode" in reasons) else "re-route"
+    return {"reasons": reasons, "action": action, "changes": changes}
+
+
+def stale_documents(store: Store, cfg: Config, mode: str | None = None) -> list[dict]:
+    """Documents whose current result was produced under different settings/policy than the active ones."""
+    out = []
+    for item in store.current():
+        s = staleness(item["current"], cfg, mode)
+        if s and not item["pending"]:
+            out.append({"document_id": item["document_id"], "source_path": item["current"]["source_path"], **s})
+    return out
 
 
 def _message(raw: bytes) -> str:

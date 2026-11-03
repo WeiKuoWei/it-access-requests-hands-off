@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 from .config import Config
-from .pipeline import retry_command
+from .pipeline import retry_command, staleness
 from .store import Store, now
 
 SCALARS = ["request_id", "request_date", "kind", "requester", "team", "system", "environment",
@@ -28,6 +28,7 @@ def _ref(a: dict | None) -> dict | None:
         return None
     return {"attempt_id": a["id"], "source_sha256": a["source_sha256"], "finished_at": a["finished_at"],
             "extraction_fp": a["extraction_fp"], "policy_version": a["policy_version"],
+            "settings": a["settings"], "mode": a["mode"],
             "status": a["status"], "owner": a["owner"], "next_action": a["next_action"]}
 
 
@@ -35,9 +36,11 @@ def error_text(a: dict) -> str | None:
     return a["error"]["message"] if a.get("error") else None
 
 
-def build(store: Store) -> tuple[list[dict], dict, list[dict]]:
+def build(store: Store, cfg: Config | None = None, mode: str | None = None) -> tuple[list[dict], dict, list[dict]]:
+    """Current records, the queue and superseded attempts. With `cfg`, entries are marked stale when their
+    result was produced under settings/policy other than the active ones."""
     snap = store.current()
-    records, entries, pending = [], [], []
+    records, entries, pending, stale_n = [], [], [], 0
     for item in snap:
         a, doc = item["current"], item["document_id"]
         if item["pending"]:
@@ -59,7 +62,11 @@ def build(store: Store) -> tuple[list[dict], dict, list[dict]]:
         entry = {"document_id": doc, "source_sha256": a["source_sha256"], "attempt_id": a["id"],
                  "status": a["status"], "owner": a["owner"], "next_action": a["next_action"],
                  "reasons": a["reasons"], "policy_version": a["policy_version"],
-                 "extraction_fp": a["extraction_fp"], "error": error_text(a)}
+                 "extraction_fp": a["extraction_fp"], "mode": a["mode"], "error": error_text(a)}
+        st = staleness(a, cfg, mode) if cfg else None
+        if st:
+            entry["stale"] = st  # still shown (it is the latest result) but flagged; `refresh` updates it
+            stale_n += 1
         e = a["extraction"]
         if e:
             entry.update(request_id=e["request_id"], requester=e["requester"], kind=e["kind"],
@@ -80,13 +87,15 @@ def build(store: Store) -> tuple[list[dict], dict, list[dict]]:
         counts[e["status"]] = counts.get(e["status"], 0) + 1
     queue = {"generated_at": now(), "documents": len(entries), "counts": counts,
              "pending": pending, "entries": entries,
+             **({"active": {"extraction_fp": cfg.extraction_fp(), "policy_version": cfg.policy_version,
+                            "settings": cfg.settings()}, "stale_results": stale_n} if cfg else {}),
              "note": "All entries await human review; approvals belong to the named human reviewers."}
     history = [h for h in store.history() if h["id"] not in {r["attempt_id"] for r in records}]
     return records, queue, history
 
 
 def export(store: Store, cfg: Config) -> dict:
-    records, queue, history = build(store)
+    records, queue, history = build(store, cfg)
     out = Path(cfg.out_dir)
     atomic_write(out / "extractions.jsonl", "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records))
     atomic_write(out / "queue.json", json.dumps(queue, indent=2, ensure_ascii=False) + "\n")

@@ -74,7 +74,7 @@ def cmd_retry(args, cfg, store):
 
 
 def cmd_queue(args, cfg, store):
-    _, queue, _ = report.build(store)
+    _, queue, _ = report.build(store, cfg)
     if args.json:
         print(json.dumps(queue, indent=2))
         return 0
@@ -82,27 +82,68 @@ def cmd_queue(args, cfg, store):
     print(f"{'DOCUMENT':<16}{'STATUS':<19}{'OWNER':<17}{'NEXT ACTION':<24}DETAIL")
     for e in rows:
         detail = e["error"] or "; ".join(e.get("reasons") or [])
+        if e.get("stale"):
+            detail = f"[STALE: {'+'.join(e['stale']['reasons'])}] " + detail
         print(f"{e['document_id']:<16}{e['status']:<19}{e['owner']:<17}{e['next_action']:<24}{detail[:90]}")
     for p in queue["pending"]:
         print(f"{p['document_id']:<16}{'pending':<19}(in progress since {p['since']} by {p['operator']})")
     print(f"\n{queue['documents']} documents; counts={queue['counts']}; pending={len(queue['pending'])}")
+    if queue["stale_results"]:
+        print(f"{queue['stale_results']} result(s) were produced under different settings/policy than the active "
+              "ones. Preview: python -m intake refresh --dry-run")
     return 0
 
 
 def cmd_status(args, cfg, store):
-    _, queue, _ = report.build(store)
+    _, queue, _ = report.build(store, cfg)
     print(json.dumps({"counts": queue["counts"], "pending": queue["pending"],
                       "failed": [e["document_id"] for e in queue["entries"] if e["status"] == "error"],
+                      "stale": [e["document_id"] for e in queue["entries"] if e.get("stale")],
                       "policy_version": cfg.policy_version, "extraction_fp": cfg.extraction_fp(),
                       "settings": cfg.settings()}, indent=2))
     return 0
 
 
+def cmd_refresh(args, cfg, store):
+    """Bring results produced under old settings/policy up to date. Earlier results stay in history."""
+    mode = "mock" if args.mock else "live"
+    stale = pipeline.stale_documents(store, cfg, mode)
+    if args.documents:
+        wanted = {Path(d).name for d in args.documents}
+        stale = [s for s in stale if s["document_id"] in wanted]
+    if not stale:
+        print("nothing to refresh: every current result matches the active settings and policy")
+        return 0
+    for s in stale:
+        print(f"{s['document_id']:<16}{s['action']:<11}{'; '.join(s['changes'])}")
+    n_model = sum(1 for s in stale if s["action"] == "re-extract")
+    print(f"\n{len(stale)} stale result(s): {n_model} need a model call, {len(stale) - n_model} only re-route")
+    if args.dry_run:
+        print("dry run: nothing changed. Run without --dry-run to refresh.")
+        return 0
+    if n_model == 0:  # policy-only refresh: no model call, so no credentials needed
+        from types import SimpleNamespace
+
+        def _no_model(**_):
+            raise RuntimeError("a source file changed during refresh and needs a model call; set OPENAI_API_KEY "
+                               "and run: python -m intake intake <directory>")
+        client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=_no_model)))
+    else:
+        client, mode = _client(cfg, args)
+    res = pipeline.run([Path(s["source_path"]) for s in stale], store, client, cfg, mode)
+    summary: dict[str, int] = {}
+    for o in res.values():
+        summary[o] = summary.get(o, 0) + 1
+    print("refresh:", ", ".join(f"{k}={v}" for k, v in sorted(summary.items())))
+    print("exported:", report.export(store, cfg))
+    return 1 if summary.get("error") else 0
+
+
 def cmd_history(args, cfg, store):
     for h in store.history(args.document):
-        print(json.dumps({k: h[k] for k in ("id", "state", "source_sha256", "extraction_fp", "policy_version",
-                                              "status", "owner", "next_action", "mode", "finished_at", "error",
-                                              "reused_from")}))
+        print(json.dumps({k: h[k] for k in ("id", "document_id", "state", "source_sha256", "extraction_fp",
+                                              "policy_version", "settings", "status", "owner", "next_action",
+                                              "mode", "finished_at", "error", "reused_from")}))
     return 0
 
 
@@ -136,7 +177,10 @@ def main(argv=None) -> int:
     p = sub.add_parser("queue", help="show the current review queue")
     p.add_argument("--status")
     p.add_argument("--json", action="store_true")
-    sub.add_parser("status", help="counts, pending, failures, settings")
+    sub.add_parser("status", help="counts, pending, failures, stale results, active settings")
+    p = sub.add_parser("refresh", help="re-process results made under older settings/policy")
+    p.add_argument("documents", nargs="*")
+    p.add_argument("--dry-run", action="store_true", help="list what would change, do nothing")
     p = sub.add_parser("history", help="all attempts, optionally for one document")
     p.add_argument("document", nargs="?")
     sub.add_parser("export", help="write deliverables/ from the store")
@@ -145,4 +189,5 @@ def main(argv=None) -> int:
     cfg = Config()
     store = Store(cfg.db_path)
     return {"intake": cmd_intake, "retry": cmd_retry, "queue": cmd_queue, "status": cmd_status,
+            "refresh": cmd_refresh,
             "history": cmd_history, "export": cmd_export, "accuracy": cmd_accuracy}[args.cmd](args, cfg, store)
