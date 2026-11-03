@@ -1,0 +1,5 @@
+hi, this repo is the IT access requests challenge. read the README and docs and tell me your plan, then start building it in python with openai.
+
+---
+
+fix the conflict handling first, then rerun and write the docs.

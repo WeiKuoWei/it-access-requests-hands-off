@@ -1,0 +1,96 @@
+{
+  "cli_version": "0.10.0",
+  "checkpoint_id": "01M6HBEF605GE562ED3NP9NDQA",
+  "session_id": "f2a5366c-2e30-4f09-af4d-ce44aeb108f8",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-03T18:41:21.1248Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "save_step_count": 2,
+  "files_touched": [
+    ".gitignore",
+    "README.md",
+    "deliverables/accuracy.md",
+    "deliverables/extractions.jsonl",
+    "deliverables/history.jsonl",
+    "deliverables/queue.json",
+    "deliverables/request-evidence.json",
+    "deliverables/verification.md",
+    "intake/__init__.py",
+    "intake/__main__.py",
+    "intake/cli.py",
+    "intake/config.py",
+    "intake/extract.py",
+    "intake/logs.py",
+    "intake/mock.py",
+    "intake/pipeline.py",
+    "intake/report.py",
+    "intake/routing.py",
+    "intake/store.py",
+    "requirements.lock",
+    "requirements.txt",
+    "tests/conftest.py",
+    "tests/expected.json",
+    "tests/fixtures/IT-101.json",
+    "tests/test_intake.py"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-sonnet-5-5",
+  "turn_id": "56c67f1ee4ac",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 110,
+    "cache_creation_tokens": 87629,
+    "cache_read_tokens": 3414440,
+    "output_tokens": 60500,
+    "api_call_count": 53
+  },
+  "session_metrics": {
+    "turn_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-03T18:41:21.089413Z",
+    "agent_lines": 2387,
+    "agent_removed": 0,
+    "human_added": 124,
+    "human_modified": 182,
+    "human_removed": 0,
+    "total_committed": 2602,
+    "total_lines_changed": 2693,
+    "agent_percentage": 88.63720757519495,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2230,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 153,
+      "user_lines_removed": 91,
+      "agent_lines_added": 2631,
+      "agent_lines_removed": 18,
+      "user_added_per_file": {
+        "deliverables/extractions.jsonl": 21,
+        "deliverables/history.jsonl": 42,
+        "deliverables/queue.json": 71,
+        "tests/test_intake.py": 19
+      },
+      "user_removed_per_file": {
+        "deliverables/extractions.jsonl": 21,
+        "deliverables/queue.json": 70
+      }
+    }
+  ]
+}

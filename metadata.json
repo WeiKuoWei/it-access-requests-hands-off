@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.10.0",
+  "checkpoint_id": "01M6HBEF605GE562ED3NP9NDQA",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    ".gitignore",
+    "README.md",
+    "deliverables/accuracy.md",
+    "deliverables/extractions.jsonl",
+    "deliverables/history.jsonl",
+    "deliverables/queue.json",
+    "deliverables/request-evidence.json",
+    "deliverables/verification.md",
+    "intake/__init__.py",
+    "intake/__main__.py",
+    "intake/cli.py",
+    "intake/config.py",
+    "intake/extract.py",
+    "intake/logs.py",
+    "intake/mock.py",
+    "intake/pipeline.py",
+    "intake/report.py",
+    "intake/routing.py",
+    "intake/store.py",
+    "requirements.lock",
+    "requirements.txt",
+    "tests/conftest.py",
+    "tests/expected.json",
+    "tests/fixtures/IT-101.json",
+    "tests/test_intake.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 110,
+    "cache_creation_tokens": 87629,
+    "cache_read_tokens": 3414440,
+    "output_tokens": 60500,
+    "api_call_count": 53
+  }
+}
