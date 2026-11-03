@@ -1,0 +1,1 @@
+check the credential redaction: make sure logs and request-evidence.json never contain the api key, and there's a test for it. commit if you change anything.
