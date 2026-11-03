@@ -1,0 +1,1 @@
+ok. last checks: make sure deliverables/ files are all current and consistent with the final code, and the full test suite passes. fix whatever is stale.
