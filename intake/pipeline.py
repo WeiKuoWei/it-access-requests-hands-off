@@ -11,7 +11,7 @@ from .config import Config
 from .extract import ExtractionError, extract
 from .logs import get_logger
 from .routing import error_route, route
-from .store import Store
+from .store import AlreadyDone, StateChanged, Store
 from .throttle import PROVIDER_KINDS, Breaker, Throttle
 
 log = get_logger()
@@ -28,8 +28,12 @@ def _error(kind: str, message: str, document_id: str) -> dict:
 
 def process_file(path: Path, store: Store, client, cfg: Config, mode: str = "live",
                  force: bool = False, sleep=None, throttle: Throttle | None = None,
-                 breaker: Breaker | None = None) -> tuple[str, str]:
-    """Returns (document_id, outcome). Outcomes: reused, rerouted, extracted, error, skipped-busy."""
+                 breaker: Breaker | None = None, expect_current: int | None = None) -> tuple[str, str]:
+    """Returns (document_id, outcome).
+
+    Outcomes: reused, rerouted, extracted, error, skipped-busy (another operator holds it),
+    already-handled (`expect_current` no longer matches: another operator already acted on it).
+    """
     document_id = path.name
     fp, policy = cfg.extraction_fp(), cfg.policy_version
     try:
@@ -39,28 +43,22 @@ def process_file(path: Path, store: Store, client, cfg: Config, mode: str = "liv
     sha = hashlib.sha256(raw).hexdigest()
 
     if not force:
-        same = store.find_done(document_id, sha, fp, policy, mode)
-        if same:
-            if store.latest_finished_id(document_id) == same["id"]:
-                return document_id, "reused"  # nothing to do; current entry already this result
-            store.add_derived(same, policy=policy, route=_stored_route(same), mode=same["mode"])
-            return document_id, "reused"
-        prior = store.find_done(document_id, sha, fp, mode=mode)  # same source+extraction settings, older policy
-        if prior:
-            try:
-                msg = _message(raw)
-            except ValueError as e:
-                return _record_failure(store, cfg, document_id, path, sha, fp, mode, "bad-export", str(e))
-            r = route(prior["extraction"], msg, document_id)
-            store.add_derived(prior, policy=policy, route=r, mode=prior["mode"])
-            return document_id, "rerouted"
+        outcome = _reuse(store, cfg, document_id, path, raw, sha, fp, policy, mode)
+        if outcome:
+            return document_id, outcome
 
     if breaker and breaker.open:
         # provider is down: do not wait through retries for every remaining document; make them visible instead
         return _record_failure(store, cfg, document_id, path, sha, fp, mode, "provider-down-skipped",
                                "Skipped: the provider failed repeatedly earlier in this run, so no call was made.")
 
-    attempt = store.claim(document_id, str(path), sha, fp, policy, cfg.settings(), mode, cfg.lease_s)
+    try:
+        attempt = store.claim(document_id, str(path), sha, fp, policy, cfg.settings(), mode, cfg.lease_s,
+                              dedupe=not force, expect_current=expect_current)
+    except AlreadyDone:  # another operator finished this exact result after our check; use it, no second call
+        return document_id, _reuse(store, cfg, document_id, path, raw, sha, fp, policy, mode) or "skipped-busy"
+    except StateChanged:
+        return document_id, "already-handled"
     if attempt is None:
         return document_id, "skipped-busy"
     try:
@@ -83,6 +81,26 @@ def process_file(path: Path, store: Store, client, cfg: Config, mode: str = "liv
         store.finish(attempt, state="error", route=error_route(),
                      error=_error("internal", f"Unexpected error: {type(e).__name__}", document_id))
     return document_id, "error"
+
+
+def _reuse(store: Store, cfg: Config, document_id: str, path: Path, raw: bytes, sha: str, fp: str, policy: str,
+           mode: str) -> str | None:
+    """Satisfy a document from an existing result if possible. Returns the outcome, or None if a model call is needed."""
+    same = store.find_done(document_id, sha, fp, policy, mode)
+    if same:
+        if store.latest_finished_id(document_id) != same["id"]:  # e.g. rolled back to earlier settings
+            store.add_derived(same, policy=policy, route=_stored_route(same), mode=same["mode"])
+        return "reused"
+    prior = store.find_done(document_id, sha, fp, mode=mode)  # same source+extraction settings, older policy
+    if prior:
+        try:
+            msg = _message(raw)
+        except ValueError as e:
+            return _record_failure(store, cfg, document_id, path, sha, fp, mode, "bad-export", str(e))[1]
+        store.add_derived(prior, policy=policy, route=route(prior["extraction"], msg, document_id),
+                          mode=prior["mode"])
+        return "rerouted"
+    return None
 
 
 def staleness(attempt: dict | None, cfg: Config, mode: str | None = None) -> dict | None:
@@ -144,8 +162,12 @@ def _record_failure(store, cfg, document_id, path, sha, fp, mode, kind, message)
 
 
 def run(paths: list[Path], store: Store, client, cfg: Config, mode: str = "live", force: bool = False,
-        sleep=None) -> dict[str, str]:
-    """Process documents with a bounded worker pool; results are visible in the store as each finishes."""
+        sleep=None, expect: dict[str, int] | None = None) -> dict[str, str]:
+    """Process documents with a bounded worker pool; results are visible in the store as each finishes.
+
+    `expect` maps document id -> the latest finished attempt id the caller based its decision on (0 = none). A
+    document whose state has since moved on (another operator handled it) is reported `already-handled`.
+    """
     results: dict[str, str] = {}
     throttle = Throttle(cfg.min_interval_s)
     breaker = Breaker(cfg.breaker_threshold)
@@ -156,7 +178,8 @@ def run(paths: list[Path], store: Store, client, cfg: Config, mode: str = "live"
         if stop.is_set():  # an interrupt/fatal error happened: do not claim anything new
             return p.name, "cancelled"
         try:
-            return process_file(p, store, client, cfg, mode, force, sleep, throttle, breaker)
+            return process_file(p, store, client, cfg, mode, force, sleep, throttle, breaker,
+                                expect_current=(expect or {}).get(p.name))
         except BaseException:
             stop.set()  # set in the worker itself, before it can pick up another document
             raise

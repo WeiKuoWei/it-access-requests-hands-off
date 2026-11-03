@@ -55,19 +55,21 @@ def cmd_retry(args, cfg, store):
         targets = [s["document_id"] for s in snap
                    if (s["current"] and s["current"]["state"] == "error")
                    or (s["pending"] and (s["pending"]["lease_expires"] or 0) < time.time())]
-    paths = []
+    paths, expect = [], {}
     known = {s["document_id"]: s for s in snap}
     for d in targets:
         item = known.get(Path(d).name)
         if not item:
             sys.exit(f"unknown document {d}")
-        att = item["current"] or item["pending"]
+        att = item["current"] or item["pending"] or item["last_attempt"]
         paths.append(Path(att["source_path"]))
+        # remember what we saw: if another operator handles this document first, we must not repeat the work
+        expect[item["document_id"]] = item["current"]["id"] if item["current"] else 0
     if not paths:
         print("nothing to retry")
         return 0
     client, mode = _client(cfg, args)
-    res = pipeline.run(paths, store, client, cfg, mode, force=True)
+    res = pipeline.run(paths, store, client, cfg, mode, force=True, expect=expect)
     print("retry:", res)
     print("exported:", report.export(store, cfg))
     return 0

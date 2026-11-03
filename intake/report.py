@@ -4,7 +4,13 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None
 
 from .config import Config
 from .pipeline import retry_command, staleness
@@ -94,13 +100,30 @@ def build(store: Store, cfg: Config | None = None, mode: str | None = None) -> t
     return records, queue, history
 
 
+@contextmanager
+def _export_lock(out: Path):
+    """Serialise exports across processes. The snapshot must be taken *inside* the lock, otherwise an operator
+    who read the database earlier can finish writing after another operator and leave older data in place."""
+    out.mkdir(parents=True, exist_ok=True)
+    if fcntl is None:  # Windows: no advisory locks available; exports are still atomic per file
+        yield
+        return
+    with open(out / ".export.lock", "w") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+
+
 def export(store: Store, cfg: Config) -> dict:
-    records, queue, history = build(store, cfg)
     out = Path(cfg.out_dir)
-    atomic_write(out / "extractions.jsonl", "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records))
-    atomic_write(out / "queue.json", json.dumps(queue, indent=2, ensure_ascii=False) + "\n")
-    # prior versions live apart from the current outputs
-    atomic_write(out / "history.jsonl", "".join(json.dumps(h, ensure_ascii=False) + "\n" for h in history))
+    with _export_lock(out):
+        records, queue, history = build(store, cfg)
+        atomic_write(out / "extractions.jsonl", "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records))
+        atomic_write(out / "queue.json", json.dumps(queue, indent=2, ensure_ascii=False) + "\n")
+        # prior versions live apart from the current outputs
+        atomic_write(out / "history.jsonl", "".join(json.dumps(h, ensure_ascii=False) + "\n" for h in history))
     return {"records": len(records), "queue": len(queue["entries"]), "history": len(history),
             "pending": len(queue["pending"])}
 

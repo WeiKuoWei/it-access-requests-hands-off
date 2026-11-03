@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import sqlite3
 import time
 from contextlib import contextmanager
@@ -35,6 +36,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_one_pending ON attempts(document_id) WHERE 
 """
 
 
+class AlreadyDone(Exception):
+    """Another operator finished an identical result between our reuse check and our claim."""
+
+
+class StateChanged(Exception):
+    """The document's latest finished attempt is no longer the one the caller decided to act on."""
+
+
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -57,9 +66,26 @@ class Store:
     def __init__(self, path: str):
         self.path = path
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        with self._conn() as c:
-            c.execute("PRAGMA journal_mode=WAL")
-            c.executescript(SCHEMA)
+        self._initialise()
+
+    def _initialise(self, patience_s: float = 30.0) -> None:
+        """Create the schema, tolerating other operators doing the same at the same moment.
+
+        Switching to WAL needs an exclusive lock and SQLite does not apply the busy timeout to that statement,
+        so simultaneous first starts used to fail with 'database is locked'. We only switch if needed and retry.
+        """
+        deadline = time.time() + patience_s
+        while True:
+            try:
+                with self._conn() as c:
+                    if c.execute("PRAGMA journal_mode").fetchone()[0].lower() != "wal":
+                        c.execute("PRAGMA journal_mode=WAL")
+                    c.executescript(SCHEMA)
+                return
+            except sqlite3.OperationalError as e:
+                if ("locked" not in str(e) and "busy" not in str(e)) or time.time() > deadline:
+                    raise
+                time.sleep(0.02 + random.random() * 0.08)
 
     @contextmanager
     def _conn(self):
@@ -72,8 +98,16 @@ class Store:
             c.close()
 
     # ---- writing -------------------------------------------------------
-    def claim(self, document_id, source_path, sha, fp, policy, settings, mode, lease_s) -> int | None:
-        """Mark a document pending. Returns attempt id, or None if another live worker holds it."""
+    def claim(self, document_id, source_path, sha, fp, policy, settings, mode, lease_s,
+              dedupe: bool = False, expect_current: int | None = None) -> int | None:
+        """Mark a document pending. Returns attempt id, or None if another live worker holds it.
+
+        The checks below run in the same write transaction as the claim, so they cannot be invalidated by
+        another operator between "look" and "claim" (that window produced duplicate model calls):
+          dedupe          -> raise AlreadyDone if an identical result (same source, settings, policy, mode) exists
+          expect_current  -> raise StateChanged unless the document's latest finished attempt is still this id
+                             (0 = none); used by `retry` so two operators never retry the same failure twice
+        """
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
             try:
@@ -84,6 +118,17 @@ class Store:
                     if live["lease_expires"] and live["lease_expires"] > time.time():
                         c.execute("ROLLBACK")
                         return None
+                if expect_current is not None:
+                    r = c.execute("SELECT id FROM attempts WHERE document_id=? AND state IN ('done','error') "
+                                  "ORDER BY id DESC LIMIT 1", (document_id,)).fetchone()
+                    if (r["id"] if r else 0) != expect_current:
+                        raise StateChanged(document_id)  # the except below rolls the transaction back
+                if dedupe and c.execute(
+                        "SELECT 1 FROM attempts WHERE document_id=? AND source_sha256=? AND extraction_fp=? "
+                        "AND policy_version=? AND mode=? AND state='done' LIMIT 1",
+                        (document_id, sha, fp, policy, mode)).fetchone():
+                    raise AlreadyDone(document_id)
+                if live:
                     c.execute("UPDATE attempts SET state='abandoned', finished_at=?, error=? WHERE id=?",
                               (now(), json.dumps({"kind": "abandoned",
                                                   "message": "worker stopped before finishing; lease expired"}),
@@ -124,15 +169,29 @@ class Store:
     def add_derived(self, base: dict, *, policy, route, mode, settings=None) -> int:
         """New 'done' attempt reusing a stored extraction (unchanged source re-seen, or re-routing only)."""
         with self._conn() as c:
-            cur = c.execute(
-                "INSERT INTO attempts(document_id,source_path,source_sha256,extraction_fp,policy_version,settings,"
-                "state,extraction,status,owner,next_action,reasons,mode,operator,started_at,finished_at,reused_from)"
-                " VALUES (?,?,?,?,?,?, 'done',?,?,?,?,?,?,?,?,?,?)",
-                (base["document_id"], base["source_path"], base["source_sha256"], base["extraction_fp"], policy,
-                 json.dumps(settings or base["settings"]), json.dumps(base["extraction"]),
-                 route["status"], route["owner"], route["next_action"], json.dumps(route["reasons"]),
-                 mode, operator(), now(), now(), base["id"]))
-            return cur.lastrowid
+            c.execute("BEGIN IMMEDIATE")
+            try:
+                # idempotent across operators: if the latest result already is exactly this, do not add another
+                last = c.execute("SELECT * FROM attempts WHERE document_id=? AND state IN ('done','error') "
+                                 "ORDER BY id DESC LIMIT 1", (base["document_id"],)).fetchone()
+                if (last and last["state"] == "done" and last["source_sha256"] == base["source_sha256"]
+                        and last["extraction_fp"] == base["extraction_fp"] and last["policy_version"] == policy
+                        and last["mode"] == mode):
+                    c.execute("ROLLBACK")
+                    return last["id"]
+                cur = c.execute(
+                    "INSERT INTO attempts(document_id,source_path,source_sha256,extraction_fp,policy_version,"
+                    "settings,state,extraction,status,owner,next_action,reasons,mode,operator,started_at,"
+                    "finished_at,reused_from) VALUES (?,?,?,?,?,?, 'done',?,?,?,?,?,?,?,?,?,?)",
+                    (base["document_id"], base["source_path"], base["source_sha256"], base["extraction_fp"], policy,
+                     json.dumps(settings or base["settings"]), json.dumps(base["extraction"]),
+                     route["status"], route["owner"], route["next_action"], json.dumps(route["reasons"]),
+                     mode, operator(), now(), now(), base["id"]))
+                c.execute("COMMIT")
+                return cur.lastrowid
+            except Exception:
+                c.execute("ROLLBACK")
+                raise
 
     # ---- reading -------------------------------------------------------
     def find_done(self, document_id, sha, fp, policy=None, mode=None) -> dict | None:
