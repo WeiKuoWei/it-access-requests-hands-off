@@ -1,0 +1,1 @@
+ok good enough on extraction. now make sure the README setup/commands section is accurate for a new operator (setup, intake, retry, queue, tests, accuracy check) and tidy up anything stale. commit.
