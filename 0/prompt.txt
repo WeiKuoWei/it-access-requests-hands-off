@@ -1,0 +1,1 @@
+ok take another pass at the hedged-date case with a fresh held-out set like you said, then commit.
