@@ -326,3 +326,44 @@ def test_readers_never_see_extractions_and_queue_from_different_exports(world):
     assert l["reads"] > 20 and l["mismatches"] == 0  # lock-protected reads were never mixed
     final = Operator(world, "check", ["check-export"], barrier=world.barrier)
     assert final.wait() == 0 and "OK snapshot" in final.log and "40 records" in final.log
+
+
+SECRETS = ["sk-" + "proj-E2Etest_9f8e7d6c5b4a3210ABCDEFGHijkl", "gw_live_" + "E2E_9f8e7d6c5b4a3210"]  # sk- shaped / not
+
+
+@pytest.mark.parametrize("style", ["header", "bare"])   # "Authorization: Bearer <key>" / the key quoted in prose
+@pytest.mark.parametrize("status", [400, 500])           # non-retryable / retried
+@pytest.mark.parametrize("secret", SECRETS)
+def test_a_key_reflected_by_the_provider_never_reaches_logs_database_exports_or_any_command_output(world, secret,
+                                                                                               status, style):
+    """Real process, real HTTP: the provider echoes the credential back inside its error response. The bare style
+    carries no header name, no 'Bearer' and (for the gateway key) no known prefix, so only the exact-value layer of
+    the redaction can catch it."""
+    files = make_inbox(world.dir, 3)
+    world.provider.echo_auth_status, world.provider.echo_style = status, style
+    intake = Operator(world, "intake", ["intake", str(files[0].parent)], OPENAI_API_KEY=secret,
+                      INTAKE_MAX_ATTEMPTS=2, INTAKE_BREAKER_THRESHOLD=0, INTAKE_LOG_LEVEL="DEBUG")
+    go(world)
+    assert intake.wait() == 1  # every document failed
+    assert f"Bearer {secret}" in world.provider.auth_seen  # the key really was sent, so its absence below means something
+
+    # the read-side commands print stored errors; run them all with the same key in their environment
+    readers = [Operator(world, name, args, OPENAI_API_KEY=secret)
+               for name, args in (("queue", ["queue", "--json"]), ("history", ["history"]), ("status", ["status"]),
+                                  ("export", ["export"]), ("check", ["check-export"]))]
+    assert [r.wait() for r in readers] == [0, 0, 0, 0, 0]
+
+    outputs = {op.name: op.log for op in [intake, *readers]}
+    outdir = Path(world.out)
+    for f in (sorted(outdir.iterdir()) if outdir.exists() else []):  # every exported file
+        if f.is_file():
+            outputs[f.name] = f.read_text()
+    db = Path(world.db)
+    for suffix in ("", "-wal", "-shm"):  # the SQLite file, including pages still sitting in the write-ahead log
+        if Path(str(db) + suffix).exists():
+            outputs[db.name + suffix] = Path(str(db) + suffix).read_bytes().decode("latin-1")
+    leaks = [name for name, text in outputs.items() if secret in text]
+    assert leaks == [], f"the API key leaked into: {leaks}"
+    # the failure is still reported usefully, with the retry command
+    assert "retry-extraction" in outputs["queue"] and "python -m intake retry" in outputs["queue"]
+    assert "[REDACTED]" in outputs["queue"]

@@ -11,7 +11,7 @@ from pathlib import Path
 from .config import Config
 from .extract import ExtractionError, extract
 from .finalize import finalize
-from .logs import get_logger
+from .logs import get_logger, redact
 from .routing import error_route, route
 from .store import AlreadyDone, StateChanged, Store
 from .throttle import PROVIDER_KINDS, Breaker, Throttle
@@ -24,7 +24,9 @@ def retry_command(document_id: str) -> str:
 
 
 def _error(kind: str, message: str, document_id: str) -> dict:
-    return {"kind": kind, "message": f"{message} Fix the cause, then run: {retry_command(document_id)}",
+    """The one place every stored error message is built, so it is also the one place it is redacted: an error text
+    can contain whatever a provider, proxy or SDK echoed back, and it ends up in the database and the exports."""
+    return {"kind": kind, "message": redact(f"{message} Fix the cause, then run: {retry_command(document_id)}"),
             "retryable": kind not in ("auth",)}
 
 

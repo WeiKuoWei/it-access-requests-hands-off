@@ -24,6 +24,9 @@ class FakeProvider:
     def __init__(self, latency_s: float = 0.0):
         self.latency_s = latency_s
         self.fail_status: int | None = None
+        self.echo_auth_status: int | None = None   # reply with this status and the received credential in the text
+        self.echo_style = "header"                 # "header": 'Authorization: Bearer <key>'; "bare": the key quoted in prose
+        self.auth_seen: set[str] = set()           # every Authorization header value received (proves the key was sent)
         self.calls: dict[str, int] = {}
         self.models: dict[str, set] = {}
         self._lock = threading.Lock()
@@ -40,7 +43,18 @@ class FakeProvider:
                 with provider._lock:
                     provider.calls[message] = provider.calls.get(message, 0) + 1
                     provider.models.setdefault(message, set()).add(body["model"])
+                auth = self.headers.get("Authorization", "")
+                with provider._lock:
+                    provider.auth_seen.add(auth)
                 time.sleep(provider.latency_s)
+                if provider.echo_auth_status:  # a misbehaving gateway that reflects the credential in its error
+                    if provider.echo_style == "bare":  # quoted in prose: no header name, no 'Bearer', no known prefix
+                        text = f"Tenant lookup failed for credential {auth.removeprefix('Bearer ')} (not found)"
+                    else:
+                        text = f"Request rejected. Received header Authorization: {auth}"
+                    err = {"error": {"message": text, "type": "invalid_request_error"}}
+                    self._send(provider.echo_auth_status, json.dumps(err))
+                    return
                 if provider.fail_status:
                     payload = json.dumps({"error": {"message": "provider unavailable", "type": "server_error"}})
                     self._send(provider.fail_status, payload)

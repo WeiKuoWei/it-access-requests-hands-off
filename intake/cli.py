@@ -6,11 +6,13 @@ import dataclasses
 import json
 import os
 import sys
+import traceback
 from pathlib import Path
 
 from . import pipeline, report
 from .config import ROOT, Config
 from .extract import make_client
+from .logs import redact
 from .store import Store
 
 
@@ -207,6 +209,17 @@ def cmd_accuracy(args, cfg, store):
     for x in res["factual_errors"] + res["omissions"]:
         print("  ", x)
     return 0
+
+
+def run(argv=None) -> int:
+    """Entry point for `python -m intake`: `main`, but an unexpected exception prints a credential-redacted
+    traceback instead of Python's raw one (an SDK or proxy error can carry the key in its message).
+    Argument errors (SystemExit) and Ctrl-C are left alone."""
+    try:
+        return main(argv)
+    except Exception:
+        print(redact(traceback.format_exc()), file=sys.stderr)
+        return 1
 
 
 def main(argv=None) -> int:

@@ -35,6 +35,14 @@ Everything is optional except `OPENAI_API_KEY` for live runs. Run all commands f
 | `INTAKE_DB` | `data/intake.db` | SQLite store: every attempt and its history (not committed) |
 | `INTAKE_OUT_DIR` | `deliverables/` | exported files |
 
+## Credential handling
+- The key lives only in the `OPENAI_API_KEY` environment variable: it is not a command-line argument (so it is not in `ps` output), and it is never written to the database, the exports, `request-evidence.json` or the logs.
+- Everything that could echo it back is redacted: every log line **including tracebacks**, every error message stored in the database and exports (a provider or gateway can reflect the request headers in an error), and the traceback printed if the CLI itself crashes. Redaction removes the exact configured key whatever its shape, plus recognisable secret shapes (`sk-…`, masked `sk-…****`, `Authorization:` and `Bearer` values, `user:password@` in URLs, `api_key=…`).
+- `request-evidence.json` shows `Authorization: Bearer [REDACTED …]`, and writing it is refused if anything credential-shaped would end up in it.
+- **Not redacted, by design:** the requesters' own message text in `extractions.jsonl` (`supporting_quotes` must stay exact substrings of the source). If a requester pastes a secret into a request, it is stored verbatim; treat the exports as sensitive.
+- **Outside this protection:** the OpenAI SDK's and `httpx`'s own debug logging (for example `OPENAI_LOG=debug`) does not go through this redaction; do not enable it on shared machines or paste its output anywhere.
+- Checks: `python -m pytest -q tests/test_redaction.py` (plus an end-to-end test in `tests/test_parallel.py` that runs the real CLI against a provider reflecting the key); the repository-wide scan in that file fails if a secret-shaped string or your real key is ever committed. If a key does leak, rotate it with the facilitator; redaction is a safety net, not a substitute.
+
 ## First run
 The 20 supplied exports are in `materials/requests/`; `tests/fixtures/IT-101.json` is the paraphrase added for the accuracy check. Each file's **name** is its `document_id` (e.g. `IT-007.json`).
 ```

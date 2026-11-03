@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - Windows
     fcntl = None
 
 from .config import Config
+from .logs import redact
 from .pipeline import retry_command, staleness
 from .store import Store, now
 
@@ -240,6 +241,10 @@ def write_evidence(cfg: Config) -> Path:
             "issue 'conflict: <field>' on a non-null field -> field nulled plus a 'normalized:' issue",
             "final failure -> status error, owner IT Service Desk, next_action retry-extraction, null extraction"],
     }
+    text = json.dumps(doc, indent=2) + "\n"
+    if redact(text) != text:  # a committed deliverable: refuse rather than write anything credential-shaped
+        raise RuntimeError("refusing to write request-evidence.json: it would contain a credential "
+                           "(the configured key or a secret-shaped string)")
     p = Path(cfg.out_dir) / "request-evidence.json"
-    atomic_write(p, json.dumps(doc, indent=2) + "\n")
+    atomic_write(p, text)
     return p
