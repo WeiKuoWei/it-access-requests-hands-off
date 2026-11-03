@@ -1,0 +1,1 @@
+ok next, add a test for the interrupted-response case and the failed retry after a prior success, if they aren't already covered. then commit.
